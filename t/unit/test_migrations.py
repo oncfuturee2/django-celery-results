@@ -14,10 +14,12 @@ class MigrationTests(TestCase):
         backward migrations, so avoid them.
         """
         path = os.path.dirname(result_migrations.__file__)
-        files = [f[:4] for f in os.listdir(path) if f.endswith('.py')]
+        files = [f[:4] for f in os.listdir(path) if f.endswith(".py")]
         self.assertEqual(
-            len(files), len(set(files)),
-            msg='Detected migration files with the same migration number')
+            len(files),
+            len(set(files)),
+            msg="Detected migration files with the same migration number",
+        )
 
     def test_models_match_migrations(self):
         """Make sure that no pending migrations exist for the app.
@@ -25,11 +27,9 @@ class MigrationTests(TestCase):
         Here just detect if model changes exist that require
         a migration, and if so we fail.
         """
-        call_command(
-            "makemigrations", "django_celery_results", "--check", "--dry-run"
-        )
+        call_command("makemigrations", "django_celery_results", "--check", "--dry-run")
 
-    @override_settings(DEFAULT_AUTO_FIELD='django.db.models.BigAutoField')
+    @override_settings(DEFAULT_AUTO_FIELD="django.db.models.BigAutoField")
     def test_models_match_migrations_with_changed_default_auto_field(self):
         """Test with changing default_auto_field.
 

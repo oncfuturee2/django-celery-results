@@ -5,8 +5,7 @@ PYTEST=pytest
 GIT=git
 TOX=tox
 ICONV=iconv
-FLAKE8=flake8
-PYDOCSTYLE=pydocstyle
+RUFF=ruff
 SPHINX2RST=sphinx2rst
 
 TESTDIR=t
@@ -32,9 +31,7 @@ help:
 	@echo "    configcheck      - Check configuration reference coverage."
 	@echo "    readmecheck      - Check README.rst encoding."
 	@echo "    contribcheck     - Check CONTRIBUTING.rst encoding"
-	@echo "    flakes --------  - Check code for syntax and style errors."
-	@echo "      flakecheck     - Run flake8 on the source code."
-	@echo "      pep257check    - Run pydocstyle on the source code."
+	@echo "    ruffcheck ------ - Check code for syntax and style errors and format."
 	@echo "readme               - Regenerate README.rst file."
 	@echo "contrib              - Regenerate CONTRIBUTING.rst file"
 	@echo "clean-dist --------- - Clean all distribution build artifacts."
@@ -73,7 +70,7 @@ docs: Documentation
 clean-docs:
 	-rm -rf "$(SPHINX_BUILDDIR)"
 
-lint: flakecheck apicheck configcheck readmecheck
+lint: ruffcheck apicheck configcheck readmecheck
 
 apicheck:
 	(cd "$(SPHINX_DIR)"; $(MAKE) apicheck)
@@ -81,17 +78,17 @@ apicheck:
 configcheck:
 	true
 
-flakecheck:
-	$(FLAKE8) "$(PROJ)" "$(TESTDIR)"
+ruffcheck:
+	$(RUFF) check "$(PROJ)" "$(TESTDIR)"
+	$(RUFF) format --check "$(PROJ)" "$(TESTDIR)"
 
-flakediag:
-	-$(MAKE) flakecheck
+ruffdiag:
+	-$(MAKE) ruffcheck
 
-pep257check:
-	$(PYDOCSTYLE) "$(PROJ)"
+rufffmt:
+	$(RUFF) format "$(PROJ)" "$(TESTDIR)"
 
-
-flakes: flakediag pep257check
+flakes: ruffdiag
 
 clean-readme:
 	-rm -f $(README)
