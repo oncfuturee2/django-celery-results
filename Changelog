@@ -1,0 +1,236 @@
+.. _changelog:
+
+================
+ Change history
+================
+
+.. _version-2.6.0:
+
+2.6.0
+=====
+:release-date: 2025-04-10 2:15 P.M. UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Fix atomic transaction not routing to the the correct DB in DatabaseBackend (#427).
+- Store current time when TaskResult started (#432).
+- Added extra except clause to TryRemoveIndex.
+- Fix for missing periodic task name (#445).
+- Update behavior of app.result_expires to match celery docs.
+- Added index to periodic_task_name.
+- Added support for Django up to 5.2.
+- Added support for python up to 3.13.
+- fix: allow for custom states in status field (#407).
+
+
+.. _version-2.5.1:
+
+2.5.1
+=====
+:release-date: 2023-05-08 8:15 P.M. UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Revert "feat: raw delete expired instead of Queryset.delete (#235)" partially.
+
+
+.. _version-2.5.0:
+
+2.5.0
+=====
+:release-date: 2023-03-13 5:45 P.M. UTC+6:00
+:release-by: Asif Saif Uddin
+
+- try possible fix to avoid a oracle regression (#325).
+- Added periodic_task_name to admin fieldset for parity with list view.
+- Only update the ChordCounter.count field when saving.
+- Meta injection (#366).
+
+
+.. _version-2.4.0:
+
+2.4.0
+=====
+:release-date: 2022-06-29 4:30 P.M. UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Fix [#315] Save args, kwargs and other extended props only when result_extended config is set to True.
+- Fix atomic transaction not routing to the the correct DB (#324).
+- Drop django 2.2 from matrix
+
+
+.. _version-2.3.1:
+
+2.3.1
+=====
+:release-date: 2022-04-17 12:50 P.M. UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Remove hard dependency on psycopg2.
+- Fix #296 Stop producing a universal wheel, python 2 is unspported.
+- fix: The description content type for setuptools needs to be rst to markdown.
+
+
+.. _version-2.3.0:
+
+2.3.0
+=====
+:release-date: 2022-03-01 1:45 p.m. UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Fix default_app_config deprecation (#221)
+- Use string values for django-cache keys #230 (#242)
+- feat: raw delete expired instead of Queryset.delete (#235)
+- Fix ``pydoc.ErrorDuringImport`` problem in django_celery_results url
+- Russian language support (#255)
+- Add Simplified Chinese translation strings.
+- Minor code clean up
+- feat: add periodic_task_name (#261)
+- Update CI with django 4.0 (#272)
+- Add translation of the messages to brazilian portuguese (#278)
+- Fix properties default value (#281)
+- Work around Oracle migration instability
+- Fix field size for MySQL (#285)
+- Update python & pypy min version (#291)
+- bum min pytest versions
+
+
+.. _version-2.2.0:
+
+2.2.0
+=====
+:release-date: 2021-07-02 11:00 a.m. UTC+6:00
+:release-by: Asif Saif Uddin
+
+- add new urls with nouns first structure (#216)
+- Remove duplicate indexes
+- fix group status view return data, add tests for it (#215)
+- typo fix (#218)
+- Use the DJANGO_CELERY_RESULTS_TASK_ID_MAX_LENGTH for group_id/task_id
+- Minor code clean up
+
+.. _version-2.1.0:
+
+2.1.0
+=====
+:release-date: 2021-06-14 09:00 p.m. UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Don't raise an error when ChordCounter is not found
+- add default_auto_field to apps.py
+- Use the provided chord_size when available
+- Match apply_chord call signature to Celery 5.1
+- Add support for GroupResult (#161)
+- Minor code clean up
+
+.. _version-2.0.1:
+
+2.0.1
+=====
+:release-date: 2021-01-19 07:30 p.m. UTC+6:00
+:release-by:
+
+- Fix backward compatibility in DatabaseBackend._store_result function
+- Fix 'args' and 'kwargs' propiertes of AsyncResult for DatabaseBackend
+- Fix task_args/task_kwargs in task_protocol=1
+- Test refactors
+- Add task_args and task_kwargs to admins searchable fields (#182)
+
+.. _version-2.0.0:
+
+2.0.0
+=====
+:release-date:
+:release-by:
+
+- Add Spanish translations (#134)
+- Add support for Django 3.0 and 3.1 (#145, #163)
+- Add support for Celery 5 (#163)
+- Drop support for Django < 2.2 (#147, #152)
+- Drop support for Python < 3.6 (#146, #147, #152)
+- Add Chord syncronisation from the database (#144)
+- Encode `task_args` and `task_kwargs` of `TaskResult` using `json.dumps` instead of using `str` (#78)
+
+.. _version-1.1.2:
+
+1.1.2
+=====
+:release-date: 2019-06-06 00:00 a.m. UTC+6:00
+:release-by: Asif Saif Uddin
+
+
+- Fixed few regressions
+
+.. _version-1.1.0:
+
+1.1.0
+=====
+:release-date: 2019-05-21 17:00 p.m. UTC+6:00
+:release-by: Asif Saif Uddin
+
+
+- Django 2.2+.
+- Drop python 3.4 and django 2.0
+- Support specifying the database to use for the store_result method (#63)
+- Fix MySQL8 system variable tx_isolation issue (#84)
+
+
+.. _version-1.0.4:
+
+1.0.4
+=====
+:release-date: 2018-11-12 19:00 p.m. UTC+2:00
+:release-by: Omer Katz
+
+1.0.3 is broken. Use 1.0.4
+
+- Revert renaming label as it is a breaking change.
+
+.. _version-1.0.3:
+
+1.0.3
+=====
+:release-date: 2018-11-12 18:00 p.m. UTC+2:00
+:release-by: Omer Katz
+
+- Revert renaming label as it is a breaking change.
+
+.. _version-1.0.2:
+
+1.0.2
+=====
+:release-date: 2018-11-12 18:00 p.m. UTC+2:00
+:release-by: Omer Katz
+
+- Store task name, args, kwargs as part of the task results in database.
+    Contributed by :github_user: `wardal`.
+
+- Admin screen changes - task name filter, search on task_name, task_id, status.
+    Contributed by :github_user: `jaylynch`.
+
+- Added default_app_config.
+- Added missing migration.
+- Fix MySQL max length issue.
+- Drop support for Django<1.11.
+
+.. _version-1.0.1:
+
+1.0.1
+=====
+:release-date: 2016-11-07 02:00 p.m. PST
+:release-by: Ask Solem
+
+- Migrations were not being installed as part of the distribution (Issue #4).
+
+- Now includes simple task result admin interface.
+
+    Contributed by :github_user:`zeezdev`.
+
+- Now depends on Celery 4.0.0.
+
+.. _version-1.0.0:
+
+1.0.0
+=====
+:release-date: 2016-09-08 03:19 p.m. PDT
+:release-by: Ask Solem
+
+- Initial release
