@@ -968,6 +968,93 @@ class test_DatabaseBackend:
         assert self.b.get_status(tid) == states.SUCCESS
         assert self.b.get_result(tid) == 42
 
+    def test_store_result_extended_properties_and_started_state(self):
+        """
+        Test _store_result covering normal state, STARTED state, and extended properties.
+        Validates parsing of context metadata, task args, worker, and periodic_task_name.
+        """
+        self.app.conf.result_serializer = 'json'
+        self.app.conf.accept_content = {'json'}
+        self.app.conf.result_extended = True
+        self.b = DatabaseBackend(app=self.app)
+
+        tid = uuid()
+        request = mock.MagicMock()
+        request.id = tid
+        request.task = 'my_periodic_task'
+        request.args = ['arg1', 'arg2']
+        request.kwargs = {'kwarg1': 'val1'}
+        request.argsrepr = "['arg1', 'arg2']"
+        request.kwargsrepr = "{'kwarg1': 'val1'}"
+        request.hostname = 'worker@node1'
+        request.periodic_task_name = 'daily_update'
+        request.meta = {'custom_meta': 'custom_value'}
+        request.children = []
+        
+        # Test STARTED state
+        self.b._store_result(
+            task_id=tid,
+            result={'pid': 1234},
+            status=states.STARTED,
+            request=request
+        )
+        
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == states.STARTED
+        assert tr.date_started is not None
+        assert tr.task_name == 'my_periodic_task'
+        assert tr.periodic_task_name == 'daily_update'
+        assert tr.worker == 'worker@node1'
+        assert json.loads(tr.task_args) == "['arg1', 'arg2']"
+        assert json.loads(tr.task_kwargs) == "{'kwarg1': 'val1'}"
+        
+        meta_dict = json.loads(tr.meta)
+        assert meta_dict.get('custom_meta') == 'custom_value'
+        assert 'children' in meta_dict
+        
+        # Test normal state (SUCCESS)
+        self.b._store_result(
+            task_id=tid,
+            result={'final': 'done'},
+            status=states.SUCCESS,
+            request=request
+        )
+        
+        tr.refresh_from_db()
+        assert tr.status == states.SUCCESS
+        assert tr.task_name == 'my_periodic_task'
+        assert tr.periodic_task_name == 'daily_update'
+        assert tr.worker == 'worker@node1'
+        
+        # Test with task protocol 1 to cover the other branch of args/kwargs extraction
+        tid2 = uuid()
+        request2 = mock.MagicMock()
+        request2.id = tid2
+        request2.task = 'my_task_v1'
+        request2.args = ['arg1']
+        request2.kwargs = {'kwarg1': 'val1'}
+        request2.argsrepr = None
+        request2.kwargsrepr = None
+        request2.hostname = 'worker@node2'
+        request2.periodic_task_name = 'hourly_update'
+        request2.meta = {}
+        request2.children = []
+        
+        self.b._store_result(
+            task_id=tid2,
+            result='done',
+            status=states.SUCCESS,
+            request=request2
+        )
+        
+        tr2 = TaskResult.objects.get(task_id=tid2)
+        assert tr2.status == states.SUCCESS
+        assert tr2.task_name == 'my_task_v1'
+        assert tr2.periodic_task_name == 'hourly_update'
+        assert tr2.worker == 'worker@node2'
+        assert json.loads(tr2.task_args) == ['arg1']
+        assert json.loads(tr2.task_kwargs) == {'kwarg1': 'val1'}
+
 
 class DjangoCeleryResultRouter:
     route_app_labels = {"django_celery_results"}
@@ -1046,3 +1133,4 @@ class ChordPartReturnTestCase(TransactionTestCase):
                 ChordCounter.objects.get(group_id=gid)
 
             request.chord.delay.assert_called_once()
+
