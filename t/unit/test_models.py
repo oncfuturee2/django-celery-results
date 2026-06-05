@@ -64,6 +64,27 @@ class test_Models(TransactionTestCase):
         )
         assert m1 not in TaskResult.objects.all()
 
+    def test_execution_time(self):
+        m = self.create_task_result()
+        m.date_started = None
+        m.date_done = None
+        # Missing timestamps
+        assert m.execution_time is None
+        
+        # Only start time
+        m.date_started = now()
+        assert m.execution_time is None
+        
+        # Only done time
+        m.date_started = None
+        m.date_done = now()
+        assert m.execution_time is None
+        
+        # Both start and done times
+        m.date_started = now() - timedelta(seconds=10)
+        m.date_done = now()
+        assert round(m.execution_time) == 10
+
     def test_store_result(self, ctype='application/json', cenc='utf-8'):
         """
         Test the `using` argument.

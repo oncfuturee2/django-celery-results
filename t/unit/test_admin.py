@@ -102,6 +102,28 @@ class test_Admin(TestCase):
             str(messages[0]))
         self.assertEqual(messages[0].level, constants.ERROR)
 
+    def test_execution_time_admin(self):
+        # Test the execution_time method in TaskResultAdmin
+        from datetime import timedelta
+        from django_celery_results.utils import now
+
+        tr = self.create_task_result()
+        tr.date_started = None
+        tr.date_done = None
+        
+        # Test with None timestamps
+        self.assertIsNone(self.task_admin.execution_time(tr))
+        
+        # Test with both timestamps
+        tr.date_started = now() - timedelta(seconds=15)
+        tr.date_done = now()
+        self.assertEqual(round(self.task_admin.execution_time(tr)), 15)
+        self.assertEqual(self.task_admin.execution_time.short_description, 'Execution Time (seconds)')
+
+        # Verify it's in list_display and readonly_fields
+        self.assertIn('execution_time', self.task_admin.list_display)
+        self.assertIn('execution_time', self.task_admin.get_readonly_fields(self.factory.get('/')))
+
 
 User = get_user_model()
 

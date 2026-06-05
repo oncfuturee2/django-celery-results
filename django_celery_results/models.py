@@ -118,6 +118,13 @@ class TaskResult(models.Model):
                          name='django_cele_periodi_1993cf_idx'),
         ]
 
+    @property
+    def execution_time(self):
+        """Execution time of the task in seconds."""
+        if self.date_started and self.date_done:
+            return (self.date_done - self.date_started).total_seconds()
+        return None
+
     def as_dict(self):
         return {
             'task_id': self.task_id,
@@ -129,7 +136,8 @@ class TaskResult(models.Model):
             'date_done': self.date_done,
             'traceback': self.traceback,
             'meta': self.meta,
-            'worker': self.worker
+            'worker': self.worker,
+            'execution_time': self.execution_time,
         }
 
     def __str__(self):
