@@ -968,6 +968,118 @@ class test_DatabaseBackend:
         assert self.b.get_status(tid) == states.SUCCESS
         assert self.b.get_result(tid) == 42
 
+    def test_store_result_normal_state(self):
+        # Test _store_result with normal state (not STARTED)
+        tid = uuid()
+        result = {'key': 'value'}
+        status = states.SUCCESS
+        
+        self.b._store_result(tid, result, status)
+        
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == status
+        assert tr.date_started is None
+        
+        # Check that meta contains children
+        meta = json.loads(tr.meta)
+        assert 'children' in meta
+
+    def test_store_result_started_state(self):
+        # Test _store_result with STARTED state
+        tid = uuid()
+        result = None
+        status = states.STARTED
+        
+        self.b._store_result(tid, result, status)
+        
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == status
+        assert isinstance(tr.date_started, datetime.datetime)
+
+    def test_store_result_with_extended_properties(self):
+        # Test _store_result with request containing extended properties
+        tid = uuid()
+        request = mock.MagicMock()
+        request.task = "my_periodic_task"
+        request.argsrepr = "['a', 1, True]"
+        request.kwargsrepr = "{'c': 6, 'd': 'e', 'f': False}"
+        request.hostname = "celery@worker-01"
+        request.periodic_task_name = "my_periodic_task_name"
+        
+        self.b._store_result(
+            tid,
+            None,
+            states.SUCCESS,
+            request=request
+        )
+        
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.task_name == "my_periodic_task"
+        assert tr.periodic_task_name == "my_periodic_task_name"
+        assert tr.worker == "celery@worker-01"
+        assert tr.task_args is not None
+        assert tr.task_kwargs is not None
+
+    def test_get_extended_properties(self):
+        # Test _get_extended_properties method directly
+        request = mock.MagicMock()
+        request.argsrepr = "['a', 1, True]"
+        request.kwargsrepr = "{'c': 6, 'd': 'e', 'f': False}"
+        request.hostname = "celery@worker-01"
+        request.periodic_task_name = "my_periodic_task"
+        request.task = "my_task_name"
+        
+        with mock.patch.object(self.b, 'encode_content') as mock_encode:
+            mock_encode.side_effect = lambda x: (None, None, x)
+            
+            extended_props = self.b._get_extended_properties(request, "traceback")
+            
+            assert extended_props['periodic_task_name'] == "my_periodic_task"
+            assert extended_props['task_args'] == "['a', 1, True]"
+            assert extended_props['task_kwargs'] == "{'c': 6, 'd': 'e', 'f': False}"
+            assert extended_props['task_name'] == "my_task_name"
+            assert extended_props['traceback'] == "traceback"
+            assert extended_props['worker'] == "celery@worker-01"
+
+    def test_get_extended_properties_protocol_1(self):
+        # Test _get_extended_properties with protocol 1 (args instead of argsrepr)
+        request = mock.MagicMock()
+        request.argsrepr = None
+        request.kwargsrepr = None
+        request.args = ['a', 1, True]
+        request.kwargs = {'c': 6, 'd': 'e', 'f': False}
+        request.hostname = "celery@worker-01"
+        request.task = "my_task_name"
+        
+        with mock.patch.object(self.b, 'encode_content') as mock_encode:
+            mock_encode.side_effect = lambda x: (None, None, x)
+            
+            extended_props = self.b._get_extended_properties(request, None)
+            
+            assert extended_props['task_args'] == ['a', 1, True]
+            assert extended_props['task_kwargs'] == {'c': 6, 'd': 'e', 'f': False}
+            assert extended_props['worker'] == "celery@worker-01"
+            assert extended_props['task_name'] == "my_task_name"
+
+    def test_get_extended_properties_result_extended_disabled(self):
+        # Test _get_extended_properties when result_extended is False
+        self.app.conf.result_extended = False
+        self.b = DatabaseBackend(app=self.app)
+        
+        request = mock.MagicMock()
+        request.argsrepr = "['a', 1, True]"
+        request.kwargsrepr = "{'c': 6, 'd': 'e', 'f': False}"
+        request.hostname = "celery@worker-01"
+        
+        extended_props = self.b._get_extended_properties(request, "traceback")
+        
+        assert extended_props['periodic_task_name'] is None
+        assert extended_props['task_args'] is None
+        assert extended_props['task_kwargs'] is None
+        assert extended_props['task_name'] is None
+        assert extended_props['traceback'] is None
+        assert extended_props['worker'] is None
+
 
 class DjangoCeleryResultRouter:
     route_app_labels = {"django_celery_results"}
