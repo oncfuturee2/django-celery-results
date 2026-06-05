@@ -8,18 +8,21 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('django_celery_results', '0004_auto_20190516_0412'),
+        ("django_celery_results", "0004_auto_20190516_0412"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='taskresult',
-            name='worker',
-            field=models.CharField(db_index=True, default=None,
-                                   help_text='Worker that executes the task',
-                                   max_length=100, null=True,
-                                   verbose_name='Worker'),
+            model_name="taskresult",
+            name="worker",
+            field=models.CharField(
+                db_index=True,
+                default=None,
+                help_text="Worker that executes the task",
+                max_length=100,
+                null=True,
+                verbose_name="Worker",
+            ),
         ),
     ]

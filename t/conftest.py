@@ -20,17 +20,22 @@ from celery.contrib.testing.app import TestApp, Trap
 
 # Tricks flake8 into silencing redefining fixtures warnings.
 __all__ = (
-    'celery_app', 'celery_enable_logging', 'depends_on_current_app',
-    'celery_parameters', 'celery_config', 'use_celery_app_trap'
+    "celery_app",
+    "celery_enable_logging",
+    "depends_on_current_app",
+    "celery_parameters",
+    "celery_config",
+    "use_celery_app_trap",
 )
 
 
 SENTINEL = object()
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def setup_default_app_trap():
     from celery._state import set_default_app
+
     set_default_app(Trap())
 
 
@@ -49,7 +54,6 @@ def _module(*names):
     prev = {}
 
     class MockModule(types.ModuleType):
-
         def __getattr__(self, attr):
             setattr(self, attr, Mock())
             return types.ModuleType.__getattribute__(self, attr)
@@ -76,7 +80,6 @@ def _module(*names):
 
 
 class _patching:
-
     def __init__(self, monkeypatch, request):
         self.monkeypatch = monkeypatch
         self.request = request
@@ -84,20 +87,19 @@ class _patching:
     def __getattr__(self, name):
         return getattr(self.monkeypatch, name)
 
-    def __call__(self, path, value=SENTINEL, name=None,
-                 new=MagicMock, **kwargs):
+    def __call__(self, path, value=SENTINEL, name=None, new=MagicMock, **kwargs):
         value = self._value_or_mock(value, new, name, path, **kwargs)
         self.monkeypatch.setattr(path, value)
         return value
 
     def object(self, target, attribute, *args, **kwargs):
         return _wrap_context(
-            patch.object(target, attribute, *args, **kwargs),
-            self.request)
+            patch.object(target, attribute, *args, **kwargs), self.request
+        )
 
     def _value_or_mock(self, value, new, name, path, **kwargs):
         if value is SENTINEL:
-            value = new(name=name or path.rpartition('.')[2])
+            value = new(name=name or path.rpartition(".")[2])
         for k, v in kwargs.items():
             setattr(value, k, v)
         return value
@@ -117,10 +119,10 @@ class _patching:
     def modules(self, *mods):
         modules = []
         for mod in mods:
-            mod = mod.split('.')
-            modules.extend(reversed([
-                '.'.join(mod[:-i] if i else mod) for i in range(len(mod))
-            ]))
+            mod = mod.split(".")
+            modules.extend(
+                reversed([".".join(mod[:-i] if i else mod) for i in range(len(mod))])
+            )
         modules = sorted(set(modules))
         return _wrap_context(module_context_manager(*modules), self.request)
 
@@ -130,6 +132,7 @@ def _wrap_context(context, request):
 
     def fin():
         context.__exit__(*sys.exc_info())
+
     request.addfinalizer(fin)
     return ret
 
@@ -153,6 +156,7 @@ def patching(monkeypatch, request):
 @pytest.fixture(autouse=True)
 def test_cases_shortcuts(request, app, patching):
     if request.instance:
+
         @app.task
         def add(x, y):
             return x + y

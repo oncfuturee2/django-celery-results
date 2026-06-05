@@ -1,0 +1,30 @@
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "D",   # pydocstyle
+    "N",   # pep8-naming
+    "I",   # isort
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "N801", "N802", "N803", "N806", # From flake8 config
+    "D100", "D102", "D104", "D105", "D107", "D203", "D213", # From pydocstyle config
+    "D205", "D212", "D403", "D415", "D417", # Suppress new ruff strict D rules
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"t/*" = ["D"]
+"django_celery_results/migrations/*" = ["D"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

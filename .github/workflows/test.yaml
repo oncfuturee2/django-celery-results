@@ -70,7 +70,7 @@ jobs:
         runs-on: blacksmith-4vcpu-ubuntu-2204
         strategy:
             matrix:
-                toxenv: [ flake8, pydocstyle, cov, integration ]
+                toxenv: [ lint, cov, integration ]
         services:
             postgres:
                 image: postgres

@@ -4,19 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('django_celery_results', '0010_remove_duplicate_indices'),
+        ("django_celery_results", "0010_remove_duplicate_indices"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='taskresult',
-            name='periodic_task_name',
+            model_name="taskresult",
+            name="periodic_task_name",
             field=models.CharField(
-                help_text='Name of the Periodic Task which was run',
+                help_text="Name of the Periodic Task which was run",
                 max_length=255,
                 null=True,
-                verbose_name='Periodic Task Name'),
+                verbose_name="Periodic Task Name",
+            ),
         ),
     ]

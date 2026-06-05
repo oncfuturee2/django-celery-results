@@ -20,9 +20,8 @@ from django_celery_results.admin import TaskResultAdmin
 from django_celery_results.models import TaskResult
 
 
-@pytest.mark.usefixtures('depends_on_current_app')
+@pytest.mark.usefixtures("depends_on_current_app")
 class test_Admin(TestCase):
-
     def setUp(self):
         self.task_admin = TaskResultAdmin(model=TaskResult, admin_site=None)
         self.factory = RequestFactory()
@@ -37,10 +36,10 @@ class test_Admin(TestCase):
         taskmeta, _ = TaskResult.objects.get_or_create(task_id=task_id)
         return taskmeta
 
-    @patch('django_celery_results.admin.celery_app.control.terminate')
+    @patch("django_celery_results.admin.celery_app.control.terminate")
     def test_terminate_task_success(self, mock_terminate):
         # Create mock request
-        request = self.factory.post('/')
+        request = self.factory.post("/")
         request.user = MagicMock()
         self._apply_middleware(request)
 
@@ -63,15 +62,13 @@ class test_Admin(TestCase):
         # Verify message_user was called with the success message
         messages = list(get_messages(request))
         self.assertEqual(len(messages), 1)
-        self.assertEqual(
-            str(messages[0]),
-            "2 task(s) was terminated successfully.")
+        self.assertEqual(str(messages[0]), "2 task(s) was terminated successfully.")
         self.assertEqual(messages[0].level, constants.SUCCESS)
 
-    @patch('django_celery_results.admin.celery_app.control.terminate')
+    @patch("django_celery_results.admin.celery_app.control.terminate")
     def test_terminate_task_failure(self, mock_terminate):
         # Create mock request
-        request = self.factory.post('/')
+        request = self.factory.post("/")
         request.user = MagicMock()
         self._apply_middleware(request)
 
@@ -98,8 +95,8 @@ class test_Admin(TestCase):
         messages = list(get_messages(request))
         self.assertEqual(len(messages), 1)
         self.assertIn(
-            "Error while terminating tasks: Termination failed",
-            str(messages[0]))
+            "Error while terminating tasks: Termination failed", str(messages[0])
+        )
         self.assertEqual(messages[0].level, constants.ERROR)
 
 
@@ -120,9 +117,7 @@ class TaskResultAdminTests(TestCase):
         )
 
     def test_add_view(self):
-        url = reverse(
-            f"admin:{self.app_name}_{self.model._meta.model_name}_add"
-        )
+        url = reverse(f"admin:{self.app_name}_{self.model._meta.model_name}_add")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 

@@ -24,79 +24,80 @@ sys.path.insert(0, os.path.abspath(os.path.join(BASE_DIR, os.pardir)))
 # otherwise even makemigrations won't run.
 try:
     from psycopg2cffi import compat
+
     compat.register()
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'HOST': os.getenv('DB_POSTGRES_HOST', 'localhost'),
-            'PORT': os.getenv('DB_POSTGRES_PORT', '5432'),
-            'NAME': os.getenv('DB_POSTGRES_DATABASE', 'postgres'),
-            'USER': os.getenv('DB_POSTGRES_USER', 'postgres'),
-            'PASSWORD': os.getenv('DB_POSTGRES_PASSWORD', 'postgres'),
-            'OPTIONS': {
-                'connect_timeout': 1000,
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "HOST": os.getenv("DB_POSTGRES_HOST", "localhost"),
+            "PORT": os.getenv("DB_POSTGRES_PORT", "5432"),
+            "NAME": os.getenv("DB_POSTGRES_DATABASE", "postgres"),
+            "USER": os.getenv("DB_POSTGRES_USER", "postgres"),
+            "PASSWORD": os.getenv("DB_POSTGRES_PASSWORD", "postgres"),
+            "OPTIONS": {
+                "connect_timeout": 1000,
             },
         },
-        'secondary': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'HOST': os.getenv('DB_POSTGRES_HOST', 'localhost'),
-            'PORT': os.getenv('DB_POSTGRES_PORT', '5432'),
-            'NAME': os.getenv('DB_POSTGRES_DATABASE', 'postgres'),
-            'USER': os.getenv('DB_POSTGRES_USER', 'postgres'),
-            'PASSWORD': os.getenv('DB_POSTGRES_PASSWORD', 'postgres'),
-            'OPTIONS': {
-                'connect_timeout': 1000,
+        "secondary": {
+            "ENGINE": "django.db.backends.postgresql",
+            "HOST": os.getenv("DB_POSTGRES_HOST", "localhost"),
+            "PORT": os.getenv("DB_POSTGRES_PORT", "5432"),
+            "NAME": os.getenv("DB_POSTGRES_DATABASE", "postgres"),
+            "USER": os.getenv("DB_POSTGRES_USER", "postgres"),
+            "PASSWORD": os.getenv("DB_POSTGRES_PASSWORD", "postgres"),
+            "OPTIONS": {
+                "connect_timeout": 1000,
             },
-            'TEST': {
-                'MIRROR': 'default',
+            "TEST": {
+                "MIRROR": "default",
             },
         },
-        'read-only': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'HOST': os.getenv('DB_POSTGRES_HOST', 'localhost'),
-            'PORT': os.getenv('DB_POSTGRES_PORT', '5432'),
-            'NAME': 'read-only-database',
-            'USER': os.getenv('DB_POSTGRES_USER', 'postgres'),
-            'PASSWORD': os.getenv('DB_POSTGRES_PASSWORD', 'postgres'),
-            'OPTIONS': {
-                'connect_timeout': 1000,
-                'options': '-c default_transaction_read_only=on',
+        "read-only": {
+            "ENGINE": "django.db.backends.postgresql",
+            "HOST": os.getenv("DB_POSTGRES_HOST", "localhost"),
+            "PORT": os.getenv("DB_POSTGRES_PORT", "5432"),
+            "NAME": "read-only-database",
+            "USER": os.getenv("DB_POSTGRES_USER", "postgres"),
+            "PASSWORD": os.getenv("DB_POSTGRES_PASSWORD", "postgres"),
+            "OPTIONS": {
+                "connect_timeout": 1000,
+                "options": "-c default_transaction_read_only=on",
             },
-            'TEST': {
-                'MIRROR': 'default',
+            "TEST": {
+                "MIRROR": "default",
             },
         },
     }
 except ImportError:
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-            'OPTIONS': {
-                'timeout': 1000,
-            }
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
+            "OPTIONS": {
+                "timeout": 1000,
+            },
         },
-        'secondary': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-            'OPTIONS': {
-                'timeout': 1000,
-            }
+        "secondary": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
+            "OPTIONS": {
+                "timeout": 1000,
+            },
         },
-        'read-only': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-            'OPTIONS': {
-                'timeout': 1000,
-            }
-        }
+        "read-only": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
+            "OPTIONS": {
+                "timeout": 1000,
+            },
+        },
     }
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.9/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'u($kbs9$irs0)436gbo9%!b&#zyd&70tx!n7!i&fl6qun@z1_l'
+SECRET_KEY = "u($kbs9$irs0)436gbo9%!b&#zyd&70tx!n7!i&fl6qun@z1_l"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -106,68 +107,67 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'django_celery_results',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "django_celery_results",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
 ]
 
-ROOT_URLCONF = 't.proj.urls'
+ROOT_URLCONF = "t.proj.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 't.proj.wsgi.application'
+WSGI_APPLICATION = "t.proj.wsgi.application"
 
 CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
     },
-    'dummy': {
-        'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+    "dummy": {
+        "BACKEND": "django.core.cache.backends.dummy.DummyCache",
     },
 }
 
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators
 
-django_auth = 'django.contrib.auth.password_validation.'
+django_auth = "django.contrib.auth.password_validation."
 
-AUTH_PASSWORD_VALIDATORS = [
-]
+AUTH_PASSWORD_VALIDATORS = []
 
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.9/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -180,4 +180,4 @@ DJANGO_CELERY_RESULTS_TASK_ID_MAX_LENGTH = 191
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
-STATIC_URL = '/static/'
+STATIC_URL = "/static/"

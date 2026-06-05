@@ -10,13 +10,11 @@ from django_celery_results.backends.cache import CacheBackend
 
 
 class SomeClass:
-
     def __init__(self, data):
         self.data = data
 
 
 class test_CacheBackend:
-
     def setup_method(self):
         self.b = CacheBackend(app=self.app)
 
@@ -32,13 +30,13 @@ class test_CacheBackend:
 
     def test_forget(self):
         tid = uuid()
-        self.b.mark_as_done(tid, {'foo': 'bar'})
-        assert self.b.get_result(tid).get('foo') == 'bar'
+        self.b.mark_as_done(tid, {"foo": "bar"})
+        assert self.b.get_result(tid).get("foo") == "bar"
         self.b.forget(tid)
         assert tid not in self.b._cache
         assert self.b.get_result(tid) is None
 
-    @pytest.mark.usefixtures('depends_on_current_app')
+    @pytest.mark.usefixtures("depends_on_current_app")
     def test_save_restore_delete_group(self):
         group_id = uuid()
         result_ids = [uuid() for i in range(10)]
@@ -53,16 +51,16 @@ class test_CacheBackend:
 
     def test_is_pickled(self):
         tid2 = uuid()
-        result = {'foo': 'baz', 'bar': SomeClass(12345)}
+        result = {"foo": "baz", "bar": SomeClass(12345)}
         self.b.mark_as_done(tid2, result)
         # is serialized properly.
         rindb = self.b.get_result(tid2)
-        assert rindb.get('foo') == 'baz'
-        assert rindb.get('bar').data == 12345
+        assert rindb.get("foo") == "baz"
+        assert rindb.get("bar").data == 12345
 
     def test_convert_key_from_byte_to_str(self):
-        """ Tests that key in byte form passed into cache
-            are succesfully completed """
+        """Tests that key in byte form passed into cache
+        are succesfully completed"""
         tid = bytes_to_str(uuid())
 
         assert self.b.get_status(tid) == states.PENDING
@@ -76,7 +74,7 @@ class test_CacheBackend:
         einfo = None
         tid3 = uuid()
         try:
-            raise KeyError('foo')
+            raise KeyError("foo")
         except KeyError as exception:
             einfo = ExceptionInfo(sys.exc_info())
             self.b.mark_as_failure(tid3, exception, traceback=einfo.traceback)
@@ -95,10 +93,9 @@ class test_CacheBackend:
 
 
 class test_custom_CacheBackend:
-
     def test_custom_cache_backend(self):
-        self.app.conf.cache_backend = 'dummy'
+        self.app.conf.cache_backend = "dummy"
         b = CacheBackend(app=self.app)
         assert (
-            b.cache_backend.__class__.__module__ == 'django.core.cache.backends.dummy'  # noqa
+            b.cache_backend.__class__.__module__ == "django.core.cache.backends.dummy"  # noqa
         )

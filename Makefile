@@ -73,7 +73,7 @@ docs: Documentation
 clean-docs:
 	-rm -rf "$(SPHINX_BUILDDIR)"
 
-lint: flakecheck apicheck configcheck readmecheck
+lint: ruffcheck apicheck configcheck readmecheck
 
 apicheck:
 	(cd "$(SPHINX_DIR)"; $(MAKE) apicheck)
@@ -81,17 +81,9 @@ apicheck:
 configcheck:
 	true
 
-flakecheck:
-	$(FLAKE8) "$(PROJ)" "$(TESTDIR)"
-
-flakediag:
-	-$(MAKE) flakecheck
-
-pep257check:
-	$(PYDOCSTYLE) "$(PROJ)"
-
-
-flakes: flakediag pep257check
+ruffcheck:
+	$(RUFF) check "$(PROJ)" "$(TESTDIR)"
+	$(RUFF) format --check "$(PROJ)" "$(TESTDIR)"
 
 clean-readme:
 	-rm -f $(README)
