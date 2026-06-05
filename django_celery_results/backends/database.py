@@ -55,6 +55,14 @@ class DatabaseBackend(BaseDictBackend):
                 return True
         return False
 
+    def _get_task_param(self, request, repr_attr, fallback_attr):
+        value = getattr(request, repr_attr, None)
+        if value is None:
+            value = getattr(request, fallback_attr, None)
+        if value is not None:
+            _, _, value = self.encode_content(value)
+        return value
+
     def _get_extended_properties(self, request, traceback):
         extended_props = {
             'periodic_task_name': None,
@@ -65,27 +73,8 @@ class DatabaseBackend(BaseDictBackend):
             'worker': None,
         }
         if request and self.app.conf.find_value_for_key('extended', 'result'):
-
-            if getattr(request, 'argsrepr', None) is not None:
-                # task protocol 2
-                task_args = request.argsrepr
-            else:
-                # task protocol 1
-                task_args = getattr(request, 'args', None)
-
-            if getattr(request, 'kwargsrepr', None) is not None:
-                # task protocol 2
-                task_kwargs = request.kwargsrepr
-            else:
-                # task protocol 1
-                task_kwargs = getattr(request, 'kwargs', None)
-
-            # Encode input arguments
-            if task_args is not None:
-                _, _, task_args = self.encode_content(task_args)
-
-            if task_kwargs is not None:
-                _, _, task_kwargs = self.encode_content(task_kwargs)
+            task_args = self._get_task_param(request, 'argsrepr', 'args')
+            task_kwargs = self._get_task_param(request, 'kwargsrepr', 'kwargs')
 
             periodic_task_name = getattr(request, 'periodic_task_name', None)
 
