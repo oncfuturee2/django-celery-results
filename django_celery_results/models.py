@@ -1,6 +1,7 @@
 """Database models."""
 
 import json
+from datetime import timedelta
 
 from celery import states
 from celery.result import GroupResult as CeleryGroupResult
@@ -134,6 +135,14 @@ class TaskResult(models.Model):
 
     def __str__(self):
         return '<Task: {0.task_id} ({0.status})>'.format(self)
+
+    def get_execution_duration(self):
+        if self.date_started is None or self.date_done is None:
+            return None
+        delta = self.date_done - self.date_started
+        if delta.total_seconds() < 0:
+            return None
+        return delta.total_seconds()
 
 
 class ChordCounter(models.Model):

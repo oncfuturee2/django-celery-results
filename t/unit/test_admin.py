@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -18,6 +19,7 @@ from django.urls import (
 
 from django_celery_results.admin import TaskResultAdmin
 from django_celery_results.models import TaskResult
+from django_celery_results.utils import now
 
 
 @pytest.mark.usefixtures('depends_on_current_app')
@@ -36,6 +38,44 @@ class test_Admin(TestCase):
         task_id = uuid()
         taskmeta, _ = TaskResult.objects.get_or_create(task_id=task_id)
         return taskmeta
+
+    def test_execution_duration_display_with_valid_dates(self):
+        task_id = uuid()
+        date_started = now() - timedelta(seconds=30)
+        date_done = now()
+        task_result = TaskResult.objects.create(
+            task_id=task_id,
+            date_started=date_started,
+            date_done=date_done,
+        )
+        display = self.task_admin.execution_duration_display(task_result)
+        assert '30.00' in display
+        assert '秒' in display
+
+    def test_execution_duration_display_with_missing_date_started(self):
+        task_id = uuid()
+        task_result = TaskResult.objects.create(
+            task_id=task_id,
+            date_started=None,
+        )
+        display = self.task_admin.execution_duration_display(task_result)
+        assert display == '-'
+
+    def test_execution_duration_display_with_missing_date_done(self):
+        task_id = uuid()
+        task_result = TaskResult.objects.create(
+            task_id=task_id,
+            date_started=now() - timedelta(seconds=10),
+        )
+        task_result.date_done = None
+        display = self.task_admin.execution_duration_display(task_result)
+        assert display == '-'
+
+    def test_execution_duration_display_in_list_display(self):
+        assert 'execution_duration_display' in self.task_admin.list_display
+
+    def test_execution_duration_display_in_readonly_fields(self):
+        assert 'execution_duration_display' in self.task_admin.readonly_fields
 
     @patch('django_celery_results.admin.celery_app.control.terminate')
     def test_terminate_task_success(self, mock_terminate):

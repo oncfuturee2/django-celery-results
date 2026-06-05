@@ -24,11 +24,11 @@ class TaskResultAdmin(admin.ModelAdmin):
     model = TaskResult
     date_hierarchy = 'date_done'
     list_display = ('task_id', 'periodic_task_name', 'task_name', 'date_done',
-                    'status', 'worker')
+                    'status', 'worker', 'execution_duration_display')
     list_filter = ('status', 'date_done', 'periodic_task_name', 'task_name',
                    'worker')
     readonly_fields = ('date_created', 'date_started', 'date_done',
-                       'result', 'meta')
+                       'result', 'meta', 'execution_duration_display')
     search_fields = ('task_name', 'task_id', 'status', 'task_args',
                      'task_kwargs')
     fieldsets = (
@@ -57,6 +57,7 @@ class TaskResultAdmin(admin.ModelAdmin):
                 'date_created',
                 'date_started',
                 'date_done',
+                'execution_duration_display',
                 'traceback',
                 'meta',
             ),
@@ -65,13 +66,20 @@ class TaskResultAdmin(admin.ModelAdmin):
     )
     actions = ['terminate_task']
 
+    def execution_duration_display(self, obj):
+        duration = obj.get_execution_duration()
+        if duration is None:
+            return '-'
+        return f'{duration:.2f} 秒'
+    execution_duration_display.short_description = _('执行耗时（秒）')
+
     def get_readonly_fields(self, request, obj=None):
         if ALLOW_EDITS:
             return self.readonly_fields
         else:
             return list({
                 field.name for field in self.model._meta.fields
-            })
+            }) + ['execution_duration_display']
 
     def terminate_task(self, request, queryset):
         """Terminate selected tasks."""

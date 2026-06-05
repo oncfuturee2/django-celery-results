@@ -13,6 +13,90 @@ from django_celery_results.utils import now
 
 
 @pytest.mark.usefixtures('depends_on_current_app')
+class test_ExecutionDuration(TransactionTestCase):
+    databases = '__all__'
+
+    def test_duration_with_valid_dates(self):
+        task_id = uuid()
+        date_started = now() - timedelta(seconds=30)
+        date_done = now()
+        task_result = TaskResult.objects.create(
+            task_id=task_id,
+            date_started=date_started,
+            date_done=date_done,
+        )
+        duration = task_result.get_execution_duration()
+        assert duration is not None
+        assert 29.5 <= duration <= 30.5
+
+    def test_duration_with_missing_date_started(self):
+        task_id = uuid()
+        task_result = TaskResult.objects.create(
+            task_id=task_id,
+            date_started=None,
+        )
+        duration = task_result.get_execution_duration()
+        assert duration is None
+
+    def test_duration_with_missing_date_done(self):
+        task_id = uuid()
+        task_result = TaskResult.objects.create(
+            task_id=task_id,
+            date_started=now() - timedelta(seconds=10),
+        )
+        task_result.date_done = None
+        duration = task_result.get_execution_duration()
+        assert duration is None
+
+    def test_duration_with_both_dates_missing(self):
+        task_id = uuid()
+        task_result = TaskResult.objects.create(task_id=task_id)
+        task_result.date_started = None
+        task_result.date_done = None
+        duration = task_result.get_execution_duration()
+        assert duration is None
+
+    def test_duration_with_negative_delta(self):
+        task_id = uuid()
+        date_started = now()
+        date_done = now() - timedelta(seconds=10)
+        task_result = TaskResult.objects.create(task_id=task_id)
+        TaskResult.objects.filter(task_id=task_id).update(
+            date_started=date_started,
+            date_done=date_done,
+        )
+        task_result.refresh_from_db()
+        duration = task_result.get_execution_duration()
+        assert duration is None
+
+    def test_duration_with_zero_seconds(self):
+        task_id = uuid()
+        current_time = now()
+        task_result = TaskResult.objects.create(task_id=task_id)
+        TaskResult.objects.filter(task_id=task_id).update(
+            date_started=current_time,
+            date_done=current_time,
+        )
+        task_result.refresh_from_db()
+        duration = task_result.get_execution_duration()
+        assert duration is not None
+        assert duration == 0.0
+
+    def test_duration_with_long_running_task(self):
+        task_id = uuid()
+        date_started = now() - timedelta(hours=2)
+        date_done = now()
+        task_result = TaskResult.objects.create(
+            task_id=task_id,
+            date_started=date_started,
+            date_done=date_done,
+        )
+        duration = task_result.get_execution_duration()
+        assert duration is not None
+        assert 7195 <= duration <= 7205
+
+
+@pytest.mark.usefixtures('depends_on_current_app')
 class test_Models(TransactionTestCase):
     databases = '__all__'
 
