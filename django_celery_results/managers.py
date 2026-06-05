@@ -219,5 +219,5 @@ class GroupResultManager(ResultManager):
         if not created:
             for k, v in fields.items():
                 setattr(obj, k, v)
-            obj.save(using=self.db)
+            obj.save(using=using)
         return obj

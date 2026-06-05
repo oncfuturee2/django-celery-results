@@ -210,6 +210,46 @@ class test_Models(TransactionTestCase):
         except TransactionError:
             pass
 
+        assert GroupResult.objects.get(
+            group_id=m1.group_id).result is None
+        assert GroupResult.objects.get(
+            group_id=m2.group_id).result is not None
+
+    def test_store_group_result_update_uses_correct_db(
+            self, ctype='application/json', cenc='utf-8'):
+        class TransactionError(Exception):
+            pass
+
+        m1 = self.create_group_result()
+        m2 = self.create_group_result()
+
+        GroupResult.objects.store_group_result(
+            ctype, cenc, m1.group_id, 'init-default')
+        GroupResult.objects.store_group_result(
+            ctype, cenc, m2.group_id, 'init-secondary',
+            using='secondary')
+
+        assert GroupResult.objects.get(
+            group_id=m1.group_id).result == 'init-default'
+        assert GroupResult.objects.using('secondary').get(
+            group_id=m2.group_id).result == 'init-secondary'
+
+        try:
+            with transaction.atomic():
+                GroupResult.objects.store_group_result(
+                    ctype, cenc, m1.group_id, 'updated-default')
+                GroupResult.objects.store_group_result(
+                    ctype, cenc, m2.group_id, 'updated-secondary',
+                    using='secondary')
+                raise TransactionError()
+        except TransactionError:
+            pass
+
+        assert GroupResult.objects.get(
+            group_id=m1.group_id).result != 'updated-default'
+        assert GroupResult.objects.get(
+            group_id=m2.group_id).result == 'updated-secondary'
+
     def test_result_batch_deletion(self):
         # Create 200 expired records
         TaskResult.objects.bulk_create(
@@ -245,7 +285,7 @@ class test_ModelsWithoutDefaultDB(TransactionTestCase):
     """
 
     non_default_test_db = 'secondary'
-    databases = [non_default_test_db]
+    databases = ['default', non_default_test_db]
 
     def test_operations_with_atomic_transactions(self):
         TaskResult.objects.db_manager(
@@ -254,3 +294,33 @@ class test_ModelsWithoutDefaultDB(TransactionTestCase):
         GroupResult.objects.db_manager(
             self.non_default_test_db
         ).delete_expired(expires=10)
+
+    def test_store_group_result_on_secondary_does_not_leak_to_default(
+            self, ctype='application/json', cenc='utf-8'):
+        id1 = uuid()
+        id2 = uuid()
+
+        GroupResult.objects.db_manager(
+            self.non_default_test_db
+        ).store_group_result(
+            ctype, cenc, id1, 'first-write',
+            using=self.non_default_test_db)
+
+        GroupResult.objects.db_manager(
+            self.non_default_test_db
+        ).store_group_result(
+            ctype, cenc, id1, 'second-write',
+            using=self.non_default_test_db)
+
+        GroupResult.objects.db_manager(
+            self.non_default_test_db
+        ).store_group_result(
+            ctype, cenc, id2, 'new-group',
+            using=self.non_default_test_db)
+
+        assert GroupResult.objects.using(
+            self.non_default_test_db
+        ).get(group_id=id1).result == 'second-write'
+        assert GroupResult.objects.using(
+            self.non_default_test_db
+        ).get(group_id=id2).result == 'new-group'

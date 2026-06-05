@@ -23,8 +23,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(BASE_DIR, os.pardir)))
 # if not installed, use sqlite as a backup (some tests may fail),
 # otherwise even makemigrations won't run.
 try:
-    from psycopg2cffi import compat
-    compat.register()
+    import psycopg2
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
