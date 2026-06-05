@@ -50,6 +50,7 @@ class test_DatabaseBackend:
             body, headers, _, _ = hybrid_to_proto2(msg, msg.body)
             properties = None
             sent_event = {}
+            headers.setdefault('ignore_result', False)
         else:
             headers, properties, body, sent_event = msg
         context = Context(

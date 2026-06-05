@@ -55,6 +55,13 @@ class DatabaseBackend(BaseDictBackend):
                 return True
         return False
 
+    @staticmethod
+    def _get_request_arg(request, repr_attr, raw_attr):
+        value = getattr(request, repr_attr, None)
+        if value is not None:
+            return value
+        return getattr(request, raw_attr, None)
+
     def _get_extended_properties(self, request, traceback):
         extended_props = {
             'periodic_task_name': None,
@@ -65,32 +72,17 @@ class DatabaseBackend(BaseDictBackend):
             'worker': None,
         }
         if request and self.app.conf.find_value_for_key('extended', 'result'):
+            task_args = self._get_request_arg(request, 'argsrepr', 'args')
+            task_kwargs = self._get_request_arg(request, 'kwargsrepr', 'kwargs')
 
-            if getattr(request, 'argsrepr', None) is not None:
-                # task protocol 2
-                task_args = request.argsrepr
-            else:
-                # task protocol 1
-                task_args = getattr(request, 'args', None)
-
-            if getattr(request, 'kwargsrepr', None) is not None:
-                # task protocol 2
-                task_kwargs = request.kwargsrepr
-            else:
-                # task protocol 1
-                task_kwargs = getattr(request, 'kwargs', None)
-
-            # Encode input arguments
             if task_args is not None:
                 _, _, task_args = self.encode_content(task_args)
 
             if task_kwargs is not None:
                 _, _, task_kwargs = self.encode_content(task_kwargs)
 
-            periodic_task_name = getattr(request, 'periodic_task_name', None)
-
             extended_props.update({
-                'periodic_task_name': periodic_task_name,
+                'periodic_task_name': getattr(request, 'periodic_task_name', None),
                 'task_args': task_args,
                 'task_kwargs': task_kwargs,
                 'task_name': getattr(request, 'task', None),
