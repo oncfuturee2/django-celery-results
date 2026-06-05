@@ -16,15 +16,13 @@ from django_celery_results.views import (
 )
 
 
-@pytest.mark.usefixtures('depends_on_current_app')
+@pytest.mark.usefixtures("depends_on_current_app")
 class test_Views(TestCase):
     @pytest.fixture(autouse=True)
     def setup_app(self, app):
         self.app = app
-        self.app.conf.result_serializer = 'json'
-        self.app.conf.result_backend = (
-            'django_celery_results.backends:DatabaseBackend'
-        )
+        self.app.conf.result_serializer = "json"
+        self.app.conf.result_backend = "django_celery_results.backends:DatabaseBackend"
 
     def setUp(self):
         self.factory = RequestFactory()
@@ -36,47 +34,47 @@ class test_Views(TestCase):
 
     def test_is_task_successful(self):
         taskmeta = self.create_task_result()
-        request = self.factory.get(f'/done/{taskmeta.task_id}')
+        request = self.factory.get(f"/done/{taskmeta.task_id}")
         response = is_task_successful(request, taskmeta.task_id)
         assert response
-        result = json.loads(response.content.decode('utf-8'))
-        assert result['task']['executed'] is False
+        result = json.loads(response.content.decode("utf-8"))
+        assert result["task"]["executed"] is False
 
         TaskResult.objects.store_result(
-            'application/json',
-            'utf-8',
+            "application/json",
+            "utf-8",
             taskmeta.task_id,
-            json.dumps({'result': True}),
-            status=states.SUCCESS
+            json.dumps({"result": True}),
+            status=states.SUCCESS,
         )
 
-        request = self.factory.get(f'/done/{taskmeta.task_id}')
+        request = self.factory.get(f"/done/{taskmeta.task_id}")
         response = is_task_successful(request, taskmeta.task_id)
         assert response
-        result = json.loads(response.content.decode('utf-8'))
-        assert result['task']['executed'] is True
+        result = json.loads(response.content.decode("utf-8"))
+        assert result["task"]["executed"] is True
 
     def test_task_status(self):
         taskmeta = self.create_task_result()
-        request = self.factory.get(f'/status/{taskmeta.task_id}')
+        request = self.factory.get(f"/status/{taskmeta.task_id}")
         response = task_status(request, taskmeta.task_id)
         assert response
-        result = json.loads(response.content.decode('utf-8'))
-        assert result['task']['status'] is not states.SUCCESS
+        result = json.loads(response.content.decode("utf-8"))
+        assert result["task"]["status"] is not states.SUCCESS
 
         TaskResult.objects.store_result(
-            'application/json',
-            'utf-8',
+            "application/json",
+            "utf-8",
             taskmeta.task_id,
-            json.dumps({'result': True}),
-            status=states.SUCCESS
+            json.dumps({"result": True}),
+            status=states.SUCCESS,
         )
 
-        request = self.factory.get(f'/status/{taskmeta.task_id}')
+        request = self.factory.get(f"/status/{taskmeta.task_id}")
         response = task_status(request, taskmeta.task_id)
         assert response
-        result = json.loads(response.content.decode('utf-8'))
-        assert result['task']['status'] == states.SUCCESS
+        result = json.loads(response.content.decode("utf-8"))
+        assert result["task"]["status"] == states.SUCCESS
 
     def create_group_result(self):
         """Return a GroupResult model instance
@@ -93,21 +91,21 @@ class test_Views(TestCase):
 
     def test_is_group_successful(self):
         meta = self.create_group_result()
-        request = self.factory.get(f'/group/done/{meta.group_id}')
+        request = self.factory.get(f"/group/done/{meta.group_id}")
         response = is_group_successful(request, meta.group_id)
         assert response
 
-        result = json.loads(response.content.decode('utf-8'))
-        assert len(result['group']['results']) == 1
-        result = json.loads(response.content.decode('utf-8'))
-        assert result['group']['results'][0]['executed'] is True
+        result = json.loads(response.content.decode("utf-8"))
+        assert len(result["group"]["results"]) == 1
+        result = json.loads(response.content.decode("utf-8"))
+        assert result["group"]["results"][0]["executed"] is True
 
     def test_group_status(self):
         meta = self.create_group_result()
-        request = self.factory.get(f'/group/status/{meta.group_id}')
+        request = self.factory.get(f"/group/status/{meta.group_id}")
         response = group_status(request, meta.group_id)
         assert response
 
-        result = json.loads(response.content.decode('utf-8'))
+        result = json.loads(response.content.decode("utf-8"))
         assert len(result["group"]["results"]) == 1
         assert result["group"]["results"][0]["status"] == states.SUCCESS

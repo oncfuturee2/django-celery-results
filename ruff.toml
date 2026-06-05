@@ -1,0 +1,26 @@
+target-version = "py38"
+
+[lint]
+select = ["E", "F", "W", "N", "D"]
+ignore = [
+    "N801",
+    "N802",
+    "N803",
+    "N806",
+    "D102",
+    "D104",
+    "D105",
+    "D203",
+    "D213",
+]
+
+[lint.pydocstyle]
+convention = "google"
+
+[lint.per-file-ignores]
+"**/migrations/*" = ["D"]
+"t/**" = ["D"]
+
+[format]
+quote-style = "double"
+indent-style = "space"

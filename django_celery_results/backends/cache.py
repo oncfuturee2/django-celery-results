@@ -10,10 +10,11 @@ class CacheBackend(KeyValueStoreBackend):
     """Backend using the Django cache framework to store task metadata."""
 
     def __init__(self, *args, **kwargs):
+        """Initialize the cache backend with pickle serializer."""
         super().__init__(*args, **kwargs)
 
         # Must make sure backend doesn't convert exceptions to dict.
-        self.serializer = 'pickle'
+        self.serializer = "pickle"
 
     def get(self, key):
         key = bytes_to_str(key)

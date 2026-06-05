@@ -4,17 +4,15 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('django_celery_results', '0012_taskresult_date_started'),
+        ("django_celery_results", "0012_taskresult_date_started"),
     ]
 
     operations = [
         migrations.AddIndex(
-            model_name='taskresult',
+            model_name="taskresult",
             index=models.Index(
-                fields=['periodic_task_name'],
-                name='django_cele_periodi_1993cf_idx'
+                fields=["periodic_task_name"], name="django_cele_periodi_1993cf_idx"
             ),
         ),
     ]
