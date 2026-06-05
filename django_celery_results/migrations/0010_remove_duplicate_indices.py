@@ -32,22 +32,21 @@ class TryRemoveIndex(migrations.RemoveIndex):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('django_celery_results', '0009_groupresult'),
+        ("django_celery_results", "0009_groupresult"),
     ]
 
     operations = [
         TryRemoveIndex(
-            model_name='chordcounter',
-            name='django_cele_group_i_299b0d_idx',
+            model_name="chordcounter",
+            name="django_cele_group_i_299b0d_idx",
         ),
         TryRemoveIndex(
-            model_name='groupresult',
-            name='django_cele_group_i_3cddec_idx',
+            model_name="groupresult",
+            name="django_cele_group_i_3cddec_idx",
         ),
         TryRemoveIndex(
-            model_name='taskresult',
-            name='django_cele_task_id_7f8fca_idx',
+            model_name="taskresult",
+            name="django_cele_task_id_7f8fca_idx",
         ),
     ]

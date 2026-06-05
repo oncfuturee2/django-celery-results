@@ -5,8 +5,7 @@ PYTEST=pytest
 GIT=git
 TOX=tox
 ICONV=iconv
-FLAKE8=flake8
-PYDOCSTYLE=pydocstyle
+RUFF=ruff
 SPHINX2RST=sphinx2rst
 
 TESTDIR=t
@@ -27,14 +26,13 @@ help:
 	@echo "test-all             - Run tests for all supported python versions."
 	@echo "distcheck ---------- - Check distribution for problems."
 	@echo "  test               - Run unittests using current python."
-	@echo "  lint ------------  - Check codebase for problems."
-	@echo "    apicheck         - Check API reference coverage."
-	@echo "    configcheck      - Check configuration reference coverage."
-	@echo "    readmecheck      - Check README.rst encoding."
-	@echo "    contribcheck     - Check CONTRIBUTING.rst encoding"
-	@echo "    flakes --------  - Check code for syntax and style errors."
-	@echo "      flakecheck     - Run flake8 on the source code."
-	@echo "      pep257check    - Run pydocstyle on the source code."
+	@echo "lint ------------  - Check codebase for problems."
+	@echo "  apicheck         - Check API reference coverage."
+	@echo "  configcheck      - Check configuration reference coverage."
+	@echo "  readmecheck      - Check README.rst encoding."
+	@echo "  contribcheck     - Check CONTRIBUTING.rst encoding"
+	@echo "  ruffcheck        - Run ruff check on the source code."
+	@echo "  ruffformatcheck  - Run ruff format check on the source code."
 	@echo "readme               - Regenerate README.rst file."
 	@echo "contrib              - Regenerate CONTRIBUTING.rst file"
 	@echo "clean-dist --------- - Clean all distribution build artifacts."
@@ -73,7 +71,7 @@ docs: Documentation
 clean-docs:
 	-rm -rf "$(SPHINX_BUILDDIR)"
 
-lint: flakecheck apicheck configcheck readmecheck
+lint: ruffcheck apicheck configcheck readmecheck
 
 apicheck:
 	(cd "$(SPHINX_DIR)"; $(MAKE) apicheck)
@@ -81,17 +79,22 @@ apicheck:
 configcheck:
 	true
 
-flakecheck:
-	$(FLAKE8) "$(PROJ)" "$(TESTDIR)"
+ruffcheck:
+	$(RUFF) check "$(PROJ)" "$(TESTDIR)"
 
-flakediag:
-	-$(MAKE) flakecheck
+ruffformatcheck:
+	$(RUFF) format --check "$(PROJ)" "$(TESTDIR)"
 
-pep257check:
-	$(PYDOCSTYLE) "$(PROJ)"
+ruffdiag:
+	-$(MAKE) ruffcheck
 
+rufffix:
+	$(RUFF) check --fix "$(PROJ)" "$(TESTDIR)"
 
-flakes: flakediag pep257check
+ruffformat:
+	$(RUFF) format "$(PROJ)" "$(TESTDIR)"
+
+ruff: ruffdiag ruffformatcheck
 
 clean-readme:
 	-rm -f $(README)

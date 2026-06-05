@@ -4,12 +4,8 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        (
-            "django_celery_results",
-            "0013_taskresult_django_cele_periodi_1993cf_idx"
-        ),
+        ("django_celery_results", "0013_taskresult_django_cele_periodi_1993cf_idx"),
     ]
 
     operations = [

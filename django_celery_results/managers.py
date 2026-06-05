@@ -32,15 +32,16 @@ def transaction_retry(max_retries=1):
         max_retries (int): Maximum number of retries.  Default one retry.
 
     """
+
     def _outer(fun):
 
         @wraps(fun)
         def _inner(*args, **kwargs):
-            _max_retries = kwargs.pop('exception_retry_count', max_retries)
+            _max_retries = kwargs.pop("exception_retry_count", max_retries)
             for retries in count(0):
                 try:
                     return fun(*args, **kwargs)
-                except Exception:   # pragma: no cover
+                except Exception:  # pragma: no cover
                     # Depending on the database backend used we can experience
                     # various exceptions. E.g. psycopg2 raises an exception
                     # if some operation breaks the transaction, so saving
@@ -48,6 +49,7 @@ def transaction_retry(max_retries=1):
                     # the transaction.
                     if retries >= _max_retries:
                         raise
+
         return _inner
 
     return _outer
@@ -57,15 +59,17 @@ class ResultManager(models.Manager):
     """Generic manager for celery results."""
 
     def warn_if_repeatable_read(self):
-        if 'mysql' in self.current_engine().lower():
+        if "mysql" in self.current_engine().lower():
             cursor = self.connection_for_read().cursor()
             # MariaDB and MySQL since 8.0 have different transaction isolation
             # variables: the former has tx_isolation, while the latter has
             # transaction_isolation
-            if cursor.execute("SHOW VARIABLES WHERE variable_name IN "
-                              "('tx_isolation', 'transaction_isolation');"):
+            if cursor.execute(
+                "SHOW VARIABLES WHERE variable_name IN "
+                "('tx_isolation', 'transaction_isolation');"
+            ):
                 isolation = cursor.fetchone()[1]
-                if isolation == 'REPEATABLE-READ':
+                if isolation == "REPEATABLE-READ":
                     warnings.warn(TxIsolationWarning(W_ISOLATION_REP.strip()))
 
     def connection_for_write(self):
@@ -76,7 +80,7 @@ class ResultManager(models.Manager):
 
     def current_engine(self):
         try:
-            return settings.DATABASES[self.db]['ENGINE']
+            return settings.DATABASES[self.db]["ENGINE"]
         except AttributeError:
             return settings.DATABASE_ENGINE
 
@@ -120,12 +124,23 @@ class TaskResultManager(ResultManager):
             return self.model(task_id=task_id)
 
     @transaction_retry(max_retries=2)
-    def store_result(self, content_type, content_encoding,
-                     task_id, result, status,
-                     traceback=None, meta=None,
-                     periodic_task_name=None,
-                     task_name=None, task_args=None, task_kwargs=None,
-                     worker=None, using=None, **kwargs):
+    def store_result(
+        self,
+        content_type,
+        content_encoding,
+        task_id,
+        result,
+        status,
+        traceback=None,
+        meta=None,
+        periodic_task_name=None,
+        task_name=None,
+        task_args=None,
+        task_kwargs=None,
+        worker=None,
+        using=None,
+        **kwargs,
+    ):
         """Store the result and status of a task.
 
         Arguments:
@@ -155,23 +170,22 @@ class TaskResultManager(ResultManager):
 
         """
         fields = {
-            'status': status,
-            'result': result,
-            'traceback': traceback,
-            'meta': meta,
-            'content_encoding': content_encoding,
-            'content_type': content_type,
-            'periodic_task_name': periodic_task_name,
-            'task_name': task_name,
-            'task_args': task_args,
-            'task_kwargs': task_kwargs,
-            'worker': worker
+            "status": status,
+            "result": result,
+            "traceback": traceback,
+            "meta": meta,
+            "content_encoding": content_encoding,
+            "content_type": content_type,
+            "periodic_task_name": periodic_task_name,
+            "task_name": task_name,
+            "task_args": task_args,
+            "task_kwargs": task_kwargs,
+            "worker": worker,
         }
-        if 'date_started' in kwargs:
-            fields['date_started'] = kwargs['date_started']
+        if "date_started" in kwargs:
+            fields["date_started"] = kwargs["date_started"]
 
-        obj, created = self.using(using).get_or_create(task_id=task_id,
-                                                       defaults=fields)
+        obj, created = self.using(using).get_or_create(task_id=task_id, defaults=fields)
         if not created:
             for k, v in fields.items():
                 setattr(obj, k, v)
@@ -203,19 +217,21 @@ class GroupResultManager(ResultManager):
             return self.model(group_id=group_id)
 
     @transaction_retry(max_retries=2)
-    def store_group_result(self, content_type, content_encoding,
-                           group_id, result, using=None):
+    def store_group_result(
+        self, content_type, content_encoding, group_id, result, using=None
+    ):
         fields = {
-            'result': result,
-            'content_encoding': content_encoding,
-            'content_type': content_type,
+            "result": result,
+            "content_encoding": content_encoding,
+            "content_type": content_type,
         }
 
         if not using:
             using = self.db
 
-        obj, created = self.using(using).get_or_create(group_id=group_id,
-                                                       defaults=fields)
+        obj, created = self.using(using).get_or_create(
+            group_id=group_id, defaults=fields
+        )
         if not created:
             for k, v in fields.items():
                 setattr(obj, k, v)

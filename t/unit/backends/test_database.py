@@ -19,25 +19,30 @@ from django_celery_results.models import ChordCounter, TaskResult
 
 
 class SomeClass:
-
     def __init__(self, data):
         self.data = data
 
 
 @pytest.mark.django_db()
-@pytest.mark.usefixtures('depends_on_current_app')
+@pytest.mark.usefixtures("depends_on_current_app")
 class test_DatabaseBackend:
-
     @pytest.fixture(autouse=True)
     def setup_backend(self):
-        self.app.conf.result_serializer = 'json'
-        self.app.conf.result_backend = (
-            'django_celery_results.backends:DatabaseBackend')
+        self.app.conf.result_serializer = "json"
+        self.app.conf.result_backend = "django_celery_results.backends:DatabaseBackend"
         self.app.conf.result_extended = True
         self.b = DatabaseBackend(app=self.app)
 
-    def _create_request(self, task_id, name, args, kwargs,
-                        argsrepr=None, kwargsrepr=None, task_protocol=2):
+    def _create_request(
+        self,
+        task_id,
+        name,
+        args,
+        kwargs,
+        argsrepr=None,
+        kwargsrepr=None,
+        task_protocol=2,
+    ):
         msg = self.app.amqp.task_protocols[task_protocol](
             task_id=task_id,
             name=name,
@@ -68,47 +73,48 @@ class test_DatabaseBackend:
         return request
 
     def test_backend__pickle_serialization__dict_result(self):
-        self.app.conf.result_serializer = 'pickle'
-        self.app.conf.accept_content = {'pickle', 'json'}
+        self.app.conf.result_serializer = "pickle"
+        self.app.conf.accept_content = {"pickle", "json"}
         self.b = DatabaseBackend(app=self.app)
 
         tid2 = uuid()
         request = self._create_request(
             task_id=tid2,
-            name='my_task',
-            args=['a', 1, SomeClass(67)],
-            kwargs={'c': 6, 'd': 'e', 'f': SomeClass(89)},
+            name="my_task",
+            args=["a", 1, SomeClass(67)],
+            kwargs={"c": 6, "d": "e", "f": SomeClass(89)},
         )
-        result = {'foo': 'baz', 'bar': SomeClass(12345)}
+        result = {"foo": "baz", "bar": SomeClass(12345)}
 
         self.b.mark_as_done(tid2, result, request=request)
         mindb = self.b.get_task_meta(tid2)
 
         # check task meta
-        assert mindb.get('result').get('foo') == 'baz'
-        assert mindb.get('result').get('bar').data == 12345
-        assert len(mindb.get('worker')) > 1
-        assert mindb.get('task_name') == 'my_task'
-        assert bool(re.match(
-            r"\['a', 1, <.*SomeClass object at .*>\]",
-            mindb.get('task_args')
-        ))
-        assert bool(re.match(
-            r"{'c': 6, 'd': 'e', 'f': <.*SomeClass object at .*>}",
-            mindb.get('task_kwargs')
-        ))
+        assert mindb.get("result").get("foo") == "baz"
+        assert mindb.get("result").get("bar").data == 12345
+        assert len(mindb.get("worker")) > 1
+        assert mindb.get("task_name") == "my_task"
+        assert bool(
+            re.match(r"\['a', 1, <.*SomeClass object at .*>\]", mindb.get("task_args"))
+        )
+        assert bool(
+            re.match(
+                r"{'c': 6, 'd': 'e', 'f': <.*SomeClass object at .*>}",
+                mindb.get("task_kwargs"),
+            )
+        )
 
         # check task_result object
         tr = TaskResult.objects.get(task_id=tid2)
         task_args = pickle.loads(b64decode(tr.task_args))
         task_kwargs = pickle.loads(b64decode(tr.task_kwargs))
-        assert task_args == mindb.get('task_args')
-        assert task_kwargs == mindb.get('task_kwargs')
+        assert task_args == mindb.get("task_args")
+        assert task_kwargs == mindb.get("task_kwargs")
 
         # check async_result
         ar = AsyncResult(tid2)
-        assert ar.args == mindb.get('task_args')
-        assert ar.kwargs == mindb.get('task_kwargs')
+        assert ar.args == mindb.get("task_args")
+        assert ar.kwargs == mindb.get("task_kwargs")
 
         # check backward compatibility
         task_kwargs2 = str(request.kwargs)
@@ -119,21 +125,22 @@ class test_DatabaseBackend:
         tr.task_kwargs = task_kwargs2
         tr.save()
         mindb = self.b.get_task_meta(tid2)
-        assert bool(re.match(
-            r"\['a', 1, <.*SomeClass object at .*>\]",
-            mindb.get('task_args')
-        ))
-        assert bool(re.match(
-            r"{'c': 6, 'd': 'e', 'f': <.*SomeClass object at .*>}",
-            mindb.get('task_kwargs')
-        ))
+        assert bool(
+            re.match(r"\['a', 1, <.*SomeClass object at .*>\]", mindb.get("task_args"))
+        )
+        assert bool(
+            re.match(
+                r"{'c': 6, 'd': 'e', 'f': <.*SomeClass object at .*>}",
+                mindb.get("task_kwargs"),
+            )
+        )
         ar = AsyncResult(tid2)
-        assert ar.args == mindb.get('task_args')
-        assert ar.kwargs == mindb.get('task_kwargs')
+        assert ar.args == mindb.get("task_args")
+        assert ar.kwargs == mindb.get("task_kwargs")
 
         tid3 = uuid()
         try:
-            raise KeyError('foo')
+            raise KeyError("foo")
         except KeyError as exception:
             self.b.mark_as_failure(tid3, exception)
 
@@ -141,112 +148,114 @@ class test_DatabaseBackend:
         assert isinstance(self.b.get_result(tid3), KeyError)
 
     def test_backend__pickle_serialization__str_result(self):
-        self.app.conf.result_serializer = 'pickle'
-        self.app.conf.accept_content = {'pickle', 'json'}
+        self.app.conf.result_serializer = "pickle"
+        self.app.conf.accept_content = {"pickle", "json"}
         self.b = DatabaseBackend(app=self.app)
 
         tid2 = uuid()
         request = self._create_request(
             task_id=tid2,
-            name='my_task',
-            args=['a', 1, SomeClass(67)],
-            kwargs={'c': 6, 'd': 'e', 'f': SomeClass(89)},
+            name="my_task",
+            args=["a", 1, SomeClass(67)],
+            kwargs={"c": 6, "d": "e", "f": SomeClass(89)},
         )
-        result = 'foo'
+        result = "foo"
 
         self.b.mark_as_done(tid2, result, request=request)
         mindb = self.b.get_task_meta(tid2)
 
         # check task meta
-        assert mindb.get('result') == 'foo'
-        assert mindb.get('task_name') == 'my_task'
-        assert len(mindb.get('worker')) > 1
-        assert bool(re.match(
-            r"\['a', 1, <.*SomeClass object at .*>\]",
-            mindb.get('task_args')
-        ))
-        assert bool(re.match(
-            r"{'c': 6, 'd': 'e', 'f': <.*SomeClass object at .*>}",
-            mindb.get('task_kwargs')
-        ))
+        assert mindb.get("result") == "foo"
+        assert mindb.get("task_name") == "my_task"
+        assert len(mindb.get("worker")) > 1
+        assert bool(
+            re.match(r"\['a', 1, <.*SomeClass object at .*>\]", mindb.get("task_args"))
+        )
+        assert bool(
+            re.match(
+                r"{'c': 6, 'd': 'e', 'f': <.*SomeClass object at .*>}",
+                mindb.get("task_kwargs"),
+            )
+        )
 
         # check task_result object
         tr = TaskResult.objects.get(task_id=tid2)
         task_args = pickle.loads(b64decode(tr.task_args))
         task_kwargs = pickle.loads(b64decode(tr.task_kwargs))
-        assert task_args == mindb.get('task_args')
-        assert task_kwargs == mindb.get('task_kwargs')
+        assert task_args == mindb.get("task_args")
+        assert task_kwargs == mindb.get("task_kwargs")
 
         # check async_result
         ar = AsyncResult(tid2)
-        assert ar.args == mindb.get('task_args')
-        assert ar.kwargs == mindb.get('task_kwargs')
+        assert ar.args == mindb.get("task_args")
+        assert ar.kwargs == mindb.get("task_kwargs")
 
     def test_backend__pickle_serialization__bytes_result(self):
-        self.app.conf.result_serializer = 'pickle'
-        self.app.conf.accept_content = {'pickle', 'json'}
+        self.app.conf.result_serializer = "pickle"
+        self.app.conf.accept_content = {"pickle", "json"}
         self.b = DatabaseBackend(app=self.app)
 
         tid2 = uuid()
         request = self._create_request(
             task_id=tid2,
-            name='my_task',
-            args=['a', 1, SomeClass(67)],
-            kwargs={'c': 6, 'd': 'e', 'f': SomeClass(89)},
+            name="my_task",
+            args=["a", 1, SomeClass(67)],
+            kwargs={"c": 6, "d": "e", "f": SomeClass(89)},
         )
-        result = b'foo'
+        result = b"foo"
 
         self.b.mark_as_done(tid2, result, request=request)
         mindb = self.b.get_task_meta(tid2)
 
         # check task meta
-        assert mindb.get('result') == b'foo'
-        assert mindb.get('task_name') == 'my_task'
-        assert len(mindb.get('worker')) > 1
-        assert bool(re.match(
-            r"\['a', 1, <.*SomeClass object at .*>\]",
-            mindb.get('task_args')
-        ))
-        assert bool(re.match(
-            r"{'c': 6, 'd': 'e', 'f': <.*SomeClass object at .*>}",
-            mindb.get('task_kwargs')
-        ))
+        assert mindb.get("result") == b"foo"
+        assert mindb.get("task_name") == "my_task"
+        assert len(mindb.get("worker")) > 1
+        assert bool(
+            re.match(r"\['a', 1, <.*SomeClass object at .*>\]", mindb.get("task_args"))
+        )
+        assert bool(
+            re.match(
+                r"{'c': 6, 'd': 'e', 'f': <.*SomeClass object at .*>}",
+                mindb.get("task_kwargs"),
+            )
+        )
 
         # check task_result objects
         tr = TaskResult.objects.get(task_id=tid2)
         task_args = pickle.loads(b64decode(tr.task_args))
         task_kwargs = pickle.loads(b64decode(tr.task_kwargs))
-        assert task_args == mindb.get('task_args')
-        assert task_kwargs == mindb.get('task_kwargs')
+        assert task_args == mindb.get("task_args")
+        assert task_kwargs == mindb.get("task_kwargs")
 
         # check async_result
         ar = AsyncResult(tid2)
-        assert ar.args == mindb.get('task_args')
-        assert ar.kwargs == mindb.get('task_kwargs')
+        assert ar.args == mindb.get("task_args")
+        assert ar.kwargs == mindb.get("task_kwargs")
 
     def test_backend__json_serialization__dict_result(self):
-        self.app.conf.result_serializer = 'json'
-        self.app.conf.accept_content = {'pickle', 'json'}
+        self.app.conf.result_serializer = "json"
+        self.app.conf.accept_content = {"pickle", "json"}
         self.b = DatabaseBackend(app=self.app)
 
         tid2 = uuid()
         request = self._create_request(
             task_id=tid2,
-            name='my_task',
-            args=['a', 1, True],
-            kwargs={'c': 6, 'd': 'e', 'f': False},
+            name="my_task",
+            args=["a", 1, True],
+            kwargs={"c": 6, "d": "e", "f": False},
         )
-        result = {'foo': 'baz', 'bar': True}
+        result = {"foo": "baz", "bar": True}
 
         self.b.mark_as_done(tid2, result, request=request)
         mindb = self.b.get_task_meta(tid2)
 
         # check task meta
-        assert mindb.get('result').get('foo') == 'baz'
-        assert mindb.get('result').get('bar') is True
-        assert mindb.get('task_name') == 'my_task'
-        assert mindb.get('task_args') == "['a', 1, True]"
-        assert mindb.get('task_kwargs') == "{'c': 6, 'd': 'e', 'f': False}"
+        assert mindb.get("result").get("foo") == "baz"
+        assert mindb.get("result").get("bar") is True
+        assert mindb.get("task_name") == "my_task"
+        assert mindb.get("task_args") == "['a', 1, True]"
+        assert mindb.get("task_kwargs") == "{'c': 6, 'd': 'e', 'f': False}"
 
         # check task_result object
         tr = TaskResult.objects.get(task_id=tid2)
@@ -255,8 +264,8 @@ class test_DatabaseBackend:
 
         # check async_result
         ar = AsyncResult(tid2)
-        assert ar.args == mindb.get('task_args')
-        assert ar.kwargs == mindb.get('task_kwargs')
+        assert ar.args == mindb.get("task_args")
+        assert ar.kwargs == mindb.get("task_kwargs")
 
         # check backward compatibility
         task_kwargs2 = str(request.kwargs)
@@ -267,15 +276,15 @@ class test_DatabaseBackend:
         tr.task_kwargs = task_kwargs2
         tr.save()
         mindb = self.b.get_task_meta(tid2)
-        assert mindb.get('task_args') == "['a', 1, True]"
-        assert mindb.get('task_kwargs') == "{'c': 6, 'd': 'e', 'f': False}"
+        assert mindb.get("task_args") == "['a', 1, True]"
+        assert mindb.get("task_kwargs") == "{'c': 6, 'd': 'e', 'f': False}"
         ar = AsyncResult(tid2)
-        assert ar.args == mindb.get('task_args')
-        assert ar.kwargs == mindb.get('task_kwargs')
+        assert ar.args == mindb.get("task_args")
+        assert ar.kwargs == mindb.get("task_kwargs")
 
         tid3 = uuid()
         try:
-            raise KeyError('foo')
+            raise KeyError("foo")
         except KeyError as exception:
             self.b.mark_as_failure(tid3, exception)
 
@@ -283,27 +292,27 @@ class test_DatabaseBackend:
         assert isinstance(self.b.get_result(tid3), KeyError)
 
     def test_backend__json_serialization__str_result(self):
-        self.app.conf.result_serializer = 'json'
-        self.app.conf.accept_content = {'pickle', 'json'}
+        self.app.conf.result_serializer = "json"
+        self.app.conf.accept_content = {"pickle", "json"}
         self.b = DatabaseBackend(app=self.app)
 
         tid2 = uuid()
         request = self._create_request(
             task_id=tid2,
-            name='my_task',
-            args=['a', 1, True],
-            kwargs={'c': 6, 'd': 'e', 'f': False},
+            name="my_task",
+            args=["a", 1, True],
+            kwargs={"c": 6, "d": "e", "f": False},
         )
-        result = 'foo'
+        result = "foo"
 
         self.b.mark_as_done(tid2, result, request=request)
         mindb = self.b.get_task_meta(tid2)
 
         # check task meta
-        assert mindb.get('result') == 'foo'
-        assert mindb.get('task_name') == 'my_task'
-        assert mindb.get('task_args') == "['a', 1, True]"
-        assert mindb.get('task_kwargs') == "{'c': 6, 'd': 'e', 'f': False}"
+        assert mindb.get("result") == "foo"
+        assert mindb.get("task_name") == "my_task"
+        assert mindb.get("task_args") == "['a', 1, True]"
+        assert mindb.get("task_kwargs") == "{'c': 6, 'd': 'e', 'f': False}"
 
         # check task_result object
         tr = TaskResult.objects.get(task_id=tid2)
@@ -312,55 +321,55 @@ class test_DatabaseBackend:
 
         # check async_result
         ar = AsyncResult(tid2)
-        assert ar.args == mindb.get('task_args')
-        assert ar.kwargs == mindb.get('task_kwargs')
+        assert ar.args == mindb.get("task_args")
+        assert ar.kwargs == mindb.get("task_kwargs")
 
     def test_backend__pickle_serialization__dict_result__protocol_1(self):
-        self.app.conf.result_serializer = 'pickle'
-        self.app.conf.accept_content = {'pickle', 'json'}
+        self.app.conf.result_serializer = "pickle"
+        self.app.conf.accept_content = {"pickle", "json"}
         self.b = DatabaseBackend(app=self.app)
 
         tid2 = uuid()
         request = self._create_request(
             task_id=tid2,
-            name='my_task',
-            args=['a', 1, SomeClass(67)],
-            kwargs={'c': 6, 'd': 'e', 'f': SomeClass(89)},
+            name="my_task",
+            args=["a", 1, SomeClass(67)],
+            kwargs={"c": 6, "d": "e", "f": SomeClass(89)},
             task_protocol=1,
         )
-        result = {'foo': 'baz', 'bar': SomeClass(12345)}
+        result = {"foo": "baz", "bar": SomeClass(12345)}
 
         self.b.mark_as_done(tid2, result, request=request)
         mindb = self.b.get_task_meta(tid2)
 
         # check task meta
-        assert mindb.get('result').get('foo') == 'baz'
-        assert mindb.get('result').get('bar').data == 12345
-        assert mindb.get('task_name') == 'my_task'
+        assert mindb.get("result").get("foo") == "baz"
+        assert mindb.get("result").get("bar").data == 12345
+        assert mindb.get("task_name") == "my_task"
 
-        assert mindb.get('task_args')[0] == 'a'
-        assert mindb.get('task_args')[1] == 1
-        assert mindb.get('task_args')[2].data == 67
+        assert mindb.get("task_args")[0] == "a"
+        assert mindb.get("task_args")[1] == 1
+        assert mindb.get("task_args")[2].data == 67
 
-        assert mindb.get('task_kwargs')['c'] == 6
-        assert mindb.get('task_kwargs')['d'] == 'e'
-        assert mindb.get('task_kwargs')['f'].data == 89
+        assert mindb.get("task_kwargs")["c"] == 6
+        assert mindb.get("task_kwargs")["d"] == "e"
+        assert mindb.get("task_kwargs")["f"].data == 89
 
         # check task_result object
         tr = TaskResult.objects.get(task_id=tid2)
         task_args = pickle.loads(b64decode(tr.task_args))
-        assert task_args[0] == 'a'
+        assert task_args[0] == "a"
         assert task_args[1] == 1
         assert task_args[2].data == 67
 
         task_kwargs = pickle.loads(b64decode(tr.task_kwargs))
-        assert task_kwargs['c'] == 6
-        assert task_kwargs['d'] == 'e'
-        assert task_kwargs['f'].data == 89
+        assert task_kwargs["c"] == 6
+        assert task_kwargs["d"] == "e"
+        assert task_kwargs["f"].data == 89
 
         tid3 = uuid()
         try:
-            raise KeyError('foo')
+            raise KeyError("foo")
         except KeyError as exception:
             self.b.mark_as_failure(tid3, exception)
 
@@ -368,122 +377,122 @@ class test_DatabaseBackend:
         assert isinstance(self.b.get_result(tid3), KeyError)
 
     def test_backend__pickle_serialization__str_result__protocol_1(self):
-        self.app.conf.result_serializer = 'pickle'
-        self.app.conf.accept_content = {'pickle', 'json'}
+        self.app.conf.result_serializer = "pickle"
+        self.app.conf.accept_content = {"pickle", "json"}
         self.b = DatabaseBackend(app=self.app)
 
         tid2 = uuid()
         request = self._create_request(
             task_id=tid2,
-            name='my_task',
-            args=['a', 1, SomeClass(67)],
-            kwargs={'c': 6, 'd': 'e', 'f': SomeClass(89)},
+            name="my_task",
+            args=["a", 1, SomeClass(67)],
+            kwargs={"c": 6, "d": "e", "f": SomeClass(89)},
             task_protocol=1,
         )
-        result = 'foo'
+        result = "foo"
 
         self.b.mark_as_done(tid2, result, request=request)
         mindb = self.b.get_task_meta(tid2)
 
         # check task meta
-        assert mindb.get('result') == 'foo'
-        assert mindb.get('task_name') == 'my_task'
+        assert mindb.get("result") == "foo"
+        assert mindb.get("task_name") == "my_task"
 
-        assert mindb.get('task_args')[0] == 'a'
-        assert mindb.get('task_args')[1] == 1
-        assert mindb.get('task_args')[2].data == 67
+        assert mindb.get("task_args")[0] == "a"
+        assert mindb.get("task_args")[1] == 1
+        assert mindb.get("task_args")[2].data == 67
 
-        assert mindb.get('task_kwargs')['c'] == 6
-        assert mindb.get('task_kwargs')['d'] == 'e'
-        assert mindb.get('task_kwargs')['f'].data == 89
+        assert mindb.get("task_kwargs")["c"] == 6
+        assert mindb.get("task_kwargs")["d"] == "e"
+        assert mindb.get("task_kwargs")["f"].data == 89
 
         # check task_result object
         tr = TaskResult.objects.get(task_id=tid2)
         task_args = pickle.loads(b64decode(tr.task_args))
-        assert task_args[0] == 'a'
+        assert task_args[0] == "a"
         assert task_args[1] == 1
         assert task_args[2].data == 67
 
         task_kwargs = pickle.loads(b64decode(tr.task_kwargs))
-        assert task_kwargs['c'] == 6
-        assert task_kwargs['d'] == 'e'
-        assert task_kwargs['f'].data == 89
+        assert task_kwargs["c"] == 6
+        assert task_kwargs["d"] == "e"
+        assert task_kwargs["f"].data == 89
 
     def test_backend__pickle_serialization__bytes_result__protocol_1(self):
-        self.app.conf.result_serializer = 'pickle'
-        self.app.conf.accept_content = {'pickle', 'json'}
+        self.app.conf.result_serializer = "pickle"
+        self.app.conf.accept_content = {"pickle", "json"}
         self.b = DatabaseBackend(app=self.app)
 
         tid2 = uuid()
         request = self._create_request(
             task_id=tid2,
-            name='my_task',
-            args=['a', 1, SomeClass(67)],
-            kwargs={'c': 6, 'd': 'e', 'f': SomeClass(89)},
+            name="my_task",
+            args=["a", 1, SomeClass(67)],
+            kwargs={"c": 6, "d": "e", "f": SomeClass(89)},
             task_protocol=1,
         )
-        result = b'foo'
+        result = b"foo"
 
         self.b.mark_as_done(tid2, result, request=request)
         mindb = self.b.get_task_meta(tid2)
 
         # check task meta
-        assert mindb.get('result') == b'foo'
-        assert mindb.get('task_name') == 'my_task'
+        assert mindb.get("result") == b"foo"
+        assert mindb.get("task_name") == "my_task"
 
-        assert mindb.get('task_args')[0] == 'a'
-        assert mindb.get('task_args')[1] == 1
-        assert mindb.get('task_args')[2].data == 67
+        assert mindb.get("task_args")[0] == "a"
+        assert mindb.get("task_args")[1] == 1
+        assert mindb.get("task_args")[2].data == 67
 
-        assert mindb.get('task_kwargs')['c'] == 6
-        assert mindb.get('task_kwargs')['d'] == 'e'
-        assert mindb.get('task_kwargs')['f'].data == 89
+        assert mindb.get("task_kwargs")["c"] == 6
+        assert mindb.get("task_kwargs")["d"] == "e"
+        assert mindb.get("task_kwargs")["f"].data == 89
 
         # check task_result object
         tr = TaskResult.objects.get(task_id=tid2)
         task_args = pickle.loads(b64decode(tr.task_args))
-        assert task_args[0] == 'a'
+        assert task_args[0] == "a"
         assert task_args[1] == 1
         assert task_args[2].data == 67
 
         task_kwargs = pickle.loads(b64decode(tr.task_kwargs))
-        assert task_kwargs['c'] == 6
-        assert task_kwargs['d'] == 'e'
-        assert task_kwargs['f'].data == 89
+        assert task_kwargs["c"] == 6
+        assert task_kwargs["d"] == "e"
+        assert task_kwargs["f"].data == 89
 
     def test_backend__json_serialization__dict_result__protocol_1(self):
-        self.app.conf.result_serializer = 'json'
-        self.app.conf.accept_content = {'pickle', 'json'}
+        self.app.conf.result_serializer = "json"
+        self.app.conf.accept_content = {"pickle", "json"}
         self.b = DatabaseBackend(app=self.app)
 
         tid2 = uuid()
         request = self._create_request(
             task_id=tid2,
-            name='my_task',
-            args=['a', 1, True],
-            kwargs={'c': 6, 'd': 'e', 'f': False},
+            name="my_task",
+            args=["a", 1, True],
+            kwargs={"c": 6, "d": "e", "f": False},
             task_protocol=1,
         )
-        result = {'foo': 'baz', 'bar': True}
+        result = {"foo": "baz", "bar": True}
 
         self.b.mark_as_done(tid2, result, request=request)
         mindb = self.b.get_task_meta(tid2)
 
         # check task meta
-        assert mindb.get('result').get('foo') == 'baz'
-        assert mindb.get('result').get('bar') is True
-        assert mindb.get('task_name') == 'my_task'
-        assert mindb.get('task_args') == ['a', 1, True]
-        assert mindb.get('task_kwargs') == {'c': 6, 'd': 'e', 'f': False}
+        assert mindb.get("result").get("foo") == "baz"
+        assert mindb.get("result").get("bar") is True
+        assert mindb.get("task_name") == "my_task"
+        assert mindb.get("task_args") == ["a", 1, True]
+        assert mindb.get("task_kwargs") == {"c": 6, "d": "e", "f": False}
 
         # check task_result object
         tr = TaskResult.objects.get(task_id=tid2)
-        assert json.loads(tr.task_args) == ['a', 1, True]
-        assert json.loads(tr.task_kwargs) == {'c': 6, 'd': 'e', 'f': False}
+        assert json.loads(tr.task_args) == ["a", 1, True]
+        assert json.loads(tr.task_kwargs) == {"c": 6, "d": "e", "f": False}
 
         tid3 = uuid()
         try:
-            raise KeyError('foo')
+            raise KeyError("foo")
         except KeyError as exception:
             self.b.mark_as_failure(tid3, exception)
 
@@ -491,43 +500,43 @@ class test_DatabaseBackend:
         assert isinstance(self.b.get_result(tid3), KeyError)
 
     def test_backend__json_serialization__str_result__protocol_1(self):
-        self.app.conf.result_serializer = 'json'
-        self.app.conf.accept_content = {'pickle', 'json'}
+        self.app.conf.result_serializer = "json"
+        self.app.conf.accept_content = {"pickle", "json"}
         self.b = DatabaseBackend(app=self.app)
 
         tid2 = uuid()
         request = self._create_request(
             task_id=tid2,
-            name='my_task',
-            args=['a', 1, True],
-            kwargs={'c': 6, 'd': 'e', 'f': False},
+            name="my_task",
+            args=["a", 1, True],
+            kwargs={"c": 6, "d": "e", "f": False},
             task_protocol=1,
         )
-        result = 'foo'
+        result = "foo"
 
         self.b.mark_as_done(tid2, result, request=request)
         mindb = self.b.get_task_meta(tid2)
 
         # check task meta
-        assert mindb.get('result') == 'foo'
-        assert mindb.get('task_name') == 'my_task'
-        assert mindb.get('task_args') == ['a', 1, True]
-        assert mindb.get('task_kwargs') == {'c': 6, 'd': 'e', 'f': False}
+        assert mindb.get("result") == "foo"
+        assert mindb.get("task_name") == "my_task"
+        assert mindb.get("task_args") == ["a", 1, True]
+        assert mindb.get("task_kwargs") == {"c": 6, "d": "e", "f": False}
 
         # check task_result object
         tr = TaskResult.objects.get(task_id=tid2)
-        assert json.loads(tr.task_args) == ['a', 1, True]
-        assert json.loads(tr.task_kwargs) == {'c': 6, 'd': 'e', 'f': False}
+        assert json.loads(tr.task_args) == ["a", 1, True]
+        assert json.loads(tr.task_kwargs) == {"c": 6, "d": "e", "f": False}
 
     def test_backend__task_result_meta_injection(self):
-        self.app.conf.result_serializer = 'json'
-        self.app.conf.accept_content = {'pickle', 'json'}
+        self.app.conf.result_serializer = "json"
+        self.app.conf.accept_content = {"pickle", "json"}
         self.b = DatabaseBackend(app=self.app)
 
         tid2 = uuid()
         request = self._create_request(
             task_id=tid2,
-            name='my_task',
+            name="my_task",
             args=[],
             kwargs={},
             task_protocol=1,
@@ -535,20 +544,18 @@ class test_DatabaseBackend:
         result = None
 
         # inject request meta arbitrary data
-        request.meta = {
-            'key': 'value'
-        }
+        request.meta = {"key": "value"}
 
         self.b.mark_as_done(tid2, result, request=request)
         mindb = self.b.get_task_meta(tid2)
 
         # check task meta
-        assert mindb.get('result') is None
-        assert mindb.get('task_name') == 'my_task'
+        assert mindb.get("result") is None
+        assert mindb.get("task_name") == "my_task"
 
         # check task_result object
         tr = TaskResult.objects.get(task_id=tid2)
-        assert json.loads(tr.meta) == {'key': 'value', 'children': []}
+        assert json.loads(tr.meta) == {"key": "value", "children": []}
 
     def test_backend__task_result_date(self):
         tid2 = uuid()
@@ -595,7 +602,7 @@ class test_DatabaseBackend:
 
         tid2 = uuid()
         try:
-            raise KeyError('foo')
+            raise KeyError("foo")
         except KeyError as exception:
             self.b.mark_as_failure(tid2, exception)
 
@@ -604,9 +611,9 @@ class test_DatabaseBackend:
 
     def test_forget(self):
         tid = uuid()
-        self.b.mark_as_done(tid, {'foo': 'bar'})
+        self.b.mark_as_done(tid, {"foo": "bar"})
         x = self.app.AsyncResult(tid)
-        assert x.result.get('foo') == 'bar'
+        assert x.result.get("foo") == "bar"
         x.forget()
         if celery.VERSION[0:3] == (3, 1, 10):
             # bug in 3.1.10 means result did not clear cache after forget.
@@ -614,146 +621,146 @@ class test_DatabaseBackend:
         assert x.result is None
 
     def test_secrets__pickle_serialization(self):
-        self.app.conf.result_serializer = 'pickle'
-        self.app.conf.accept_content = {'pickle', 'json'}
+        self.app.conf.result_serializer = "pickle"
+        self.app.conf.accept_content = {"pickle", "json"}
         self.b = DatabaseBackend(app=self.app)
 
         tid = uuid()
         request = self._create_request(
             task_id=tid,
-            name='my_task',
-            args=['a', 1, 'password'],
-            kwargs={'c': 3, 'd': 'e', 'password': 'password'},
-            argsrepr='argsrepr',
-            kwargsrepr='kwargsrepr',
+            name="my_task",
+            args=["a", 1, "password"],
+            kwargs={"c": 3, "d": "e", "password": "password"},
+            argsrepr="argsrepr",
+            kwargsrepr="kwargsrepr",
         )
-        result = {'foo': 'baz'}
+        result = {"foo": "baz"}
 
         self.b.mark_as_done(tid, result, request=request)
         mindb = self.b.get_task_meta(tid)
 
         # check task meta
-        assert mindb.get('result') == {'foo': 'baz'}
-        assert mindb.get('task_args') == 'argsrepr'
-        assert mindb.get('task_kwargs') == 'kwargsrepr'
-        assert len(mindb.get('worker')) > 1
+        assert mindb.get("result") == {"foo": "baz"}
+        assert mindb.get("task_args") == "argsrepr"
+        assert mindb.get("task_kwargs") == "kwargsrepr"
+        assert len(mindb.get("worker")) > 1
 
         # check task_result object
         tr = TaskResult.objects.get(task_id=tid)
         task_args = pickle.loads(b64decode(tr.task_args))
         task_kwargs = pickle.loads(b64decode(tr.task_kwargs))
-        assert task_args == 'argsrepr'
-        assert task_kwargs == 'kwargsrepr'
+        assert task_args == "argsrepr"
+        assert task_kwargs == "kwargsrepr"
 
         # check async_result
         ar = AsyncResult(tid)
-        assert ar.args == mindb.get('task_args')
-        assert ar.kwargs == mindb.get('task_kwargs')
+        assert ar.args == mindb.get("task_args")
+        assert ar.kwargs == mindb.get("task_kwargs")
 
     def test_secrets__json_serialization(self):
-        self.app.conf.result_serializer = 'json'
-        self.app.conf.accept_content = {'pickle', 'json'}
+        self.app.conf.result_serializer = "json"
+        self.app.conf.accept_content = {"pickle", "json"}
         self.b = DatabaseBackend(app=self.app)
 
         tid = uuid()
         request = self._create_request(
             task_id=tid,
-            name='my_task',
-            args=['a', 1, True],
-            kwargs={'c': 6, 'd': 'e', 'f': False},
-            argsrepr='argsrepr',
-            kwargsrepr='kwargsrepr',
+            name="my_task",
+            args=["a", 1, True],
+            kwargs={"c": 6, "d": "e", "f": False},
+            argsrepr="argsrepr",
+            kwargsrepr="kwargsrepr",
         )
-        result = {'foo': 'baz'}
+        result = {"foo": "baz"}
 
         self.b.mark_as_done(tid, result, request=request)
         mindb = self.b.get_task_meta(tid)
 
         # check task meta
-        assert mindb.get('result') == {'foo': 'baz'}
-        assert mindb.get('task_args') == 'argsrepr'
-        assert mindb.get('task_kwargs') == 'kwargsrepr'
+        assert mindb.get("result") == {"foo": "baz"}
+        assert mindb.get("task_args") == "argsrepr"
+        assert mindb.get("task_kwargs") == "kwargsrepr"
 
         # check task_result object
         tr = TaskResult.objects.get(task_id=tid)
-        assert json.loads(tr.task_args) == 'argsrepr'
-        assert json.loads(tr.task_kwargs) == 'kwargsrepr'
+        assert json.loads(tr.task_args) == "argsrepr"
+        assert json.loads(tr.task_kwargs) == "kwargsrepr"
 
         # check async_result
         ar = AsyncResult(tid)
-        assert ar.args == mindb.get('task_args')
-        assert ar.kwargs == mindb.get('task_kwargs')
+        assert ar.args == mindb.get("task_args")
+        assert ar.kwargs == mindb.get("task_kwargs")
 
     def test_secrets__pickle_serialization__protocol_1(self):
-        self.app.conf.result_serializer = 'pickle'
-        self.app.conf.accept_content = {'pickle', 'json'}
+        self.app.conf.result_serializer = "pickle"
+        self.app.conf.accept_content = {"pickle", "json"}
         self.b = DatabaseBackend(app=self.app)
 
         tid = uuid()
         request = self._create_request(
             task_id=tid,
-            name='my_task',
-            args=['a', 1, SomeClass(67)],
-            kwargs={'c': 6, 'd': 'e', 'f': SomeClass(89)},
-            argsrepr='argsrepr',
-            kwargsrepr='kwargsrepr',
+            name="my_task",
+            args=["a", 1, SomeClass(67)],
+            kwargs={"c": 6, "d": "e", "f": SomeClass(89)},
+            argsrepr="argsrepr",
+            kwargsrepr="kwargsrepr",
             task_protocol=1,
         )
-        result = {'foo': 'baz'}
+        result = {"foo": "baz"}
 
         self.b.mark_as_done(tid, result, request=request)
 
         mindb = self.b.get_task_meta(tid)
-        assert mindb.get('result') == {'foo': 'baz'}
+        assert mindb.get("result") == {"foo": "baz"}
 
-        assert mindb.get('task_args')[0] == 'a'
-        assert mindb.get('task_args')[1] == 1
-        assert mindb.get('task_args')[2].data == 67
+        assert mindb.get("task_args")[0] == "a"
+        assert mindb.get("task_args")[1] == 1
+        assert mindb.get("task_args")[2].data == 67
 
-        assert mindb.get('task_kwargs')['c'] == 6
-        assert mindb.get('task_kwargs')['d'] == 'e'
-        assert mindb.get('task_kwargs')['f'].data == 89
+        assert mindb.get("task_kwargs")["c"] == 6
+        assert mindb.get("task_kwargs")["d"] == "e"
+        assert mindb.get("task_kwargs")["f"].data == 89
 
         tr = TaskResult.objects.get(task_id=tid)
         task_args = pickle.loads(b64decode(tr.task_args))
-        assert task_args[0] == 'a'
+        assert task_args[0] == "a"
         assert task_args[1] == 1
         assert task_args[2].data == 67
 
         task_kwargs = pickle.loads(b64decode(tr.task_kwargs))
-        assert task_kwargs['c'] == 6
-        assert task_kwargs['d'] == 'e'
-        assert task_kwargs['f'].data == 89
+        assert task_kwargs["c"] == 6
+        assert task_kwargs["d"] == "e"
+        assert task_kwargs["f"].data == 89
 
     def test_secrets__json_serialization__protocol_1(self):
-        self.app.conf.result_serializer = 'json'
-        self.app.conf.accept_content = {'pickle', 'json'}
+        self.app.conf.result_serializer = "json"
+        self.app.conf.accept_content = {"pickle", "json"}
         self.b = DatabaseBackend(app=self.app)
 
         tid = uuid()
         request = self._create_request(
             task_id=tid,
-            name='my_task',
-            args=['a', 1, True],
-            kwargs={'c': 6, 'd': 'e', 'f': False},
-            argsrepr='argsrepr',
-            kwargsrepr='kwargsrepr',
+            name="my_task",
+            args=["a", 1, True],
+            kwargs={"c": 6, "d": "e", "f": False},
+            argsrepr="argsrepr",
+            kwargsrepr="kwargsrepr",
             task_protocol=1,
         )
-        result = {'foo': 'baz'}
+        result = {"foo": "baz"}
 
         self.b.mark_as_done(tid, result, request=request)
 
         mindb = self.b.get_task_meta(tid)
 
-        assert mindb.get('result') == {'foo': 'baz'}
-        assert mindb.get('task_name') == 'my_task'
-        assert mindb.get('task_args') == ['a', 1, True]
-        assert mindb.get('task_kwargs') == {'c': 6, 'd': 'e', 'f': False}
+        assert mindb.get("result") == {"foo": "baz"}
+        assert mindb.get("task_name") == "my_task"
+        assert mindb.get("task_args") == ["a", 1, True]
+        assert mindb.get("task_kwargs") == {"c": 6, "d": "e", "f": False}
 
         tr = TaskResult.objects.get(task_id=tid)
-        assert json.loads(tr.task_args) == ['a', 1, True]
-        assert json.loads(tr.task_kwargs) == {'c': 6, 'd': 'e', 'f': False}
+        assert json.loads(tr.task_args) == ["a", 1, True]
+        assert json.loads(tr.task_kwargs) == {"c": 6, "d": "e", "f": False}
 
     def test_apply_chord_header_result_arg(self):
         """Test if apply_chord can handle Celery <= 5.1 call signature"""
@@ -934,21 +941,21 @@ class test_DatabaseBackend:
         tid2 = uuid()
         request = self._create_request(
             task_id=tid2,
-            name='my_task',
-            args=['a', 1, True],
-            kwargs={'c': 6, 'd': 'e', 'f': False},
+            name="my_task",
+            args=["a", 1, True],
+            kwargs={"c": 6, "d": "e", "f": False},
         )
-        result = 'foo'
+        result = "foo"
 
         self.b.mark_as_done(tid2, result, request=request)
 
         mindb = self.b.get_task_meta(tid2)
 
         # check meta data
-        assert mindb.get('result') == 'foo'
-        assert mindb.get('task_name') is None
-        assert mindb.get('task_args') is None
-        assert mindb.get('task_kwargs') is None
+        assert mindb.get("result") == "foo"
+        assert mindb.get("task_name") is None
+        assert mindb.get("task_args") is None
+        assert mindb.get("task_kwargs") is None
 
         # check task_result object
         tr = TaskResult.objects.get(task_id=tid2)
@@ -990,9 +997,8 @@ class ChordPartReturnTestCase(TransactionTestCase):
 
     def setUp(self):
         super().setUp()
-        self.app.conf.result_serializer = 'json'
-        self.app.conf.result_backend = (
-            'django_celery_results.backends:DatabaseBackend')
+        self.app.conf.result_serializer = "json"
+        self.app.conf.result_backend = "django_celery_results.backends:DatabaseBackend"
         self.app.conf.result_extended = True
         self.b = DatabaseBackend(app=self.app)
 

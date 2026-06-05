@@ -4,18 +4,17 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('django_celery_results', '0002_add_task_name_args_kwargs'),
+        ("django_celery_results", "0002_add_task_name_args_kwargs"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='taskresult',
+            name="taskresult",
             options={
-                'ordering': ['-date_done'],
-                'verbose_name': 'task result',
-                'verbose_name_plural': 'task results'
+                "ordering": ["-date_done"],
+                "verbose_name": "task result",
+                "verbose_name_plural": "task results",
             },
         ),
     ]

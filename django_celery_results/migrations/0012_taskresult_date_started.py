@@ -4,20 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('django_celery_results', '0011_taskresult_periodic_task_name'),
+        ("django_celery_results", "0011_taskresult_periodic_task_name"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='taskresult',
-            name='date_started',
+            model_name="taskresult",
+            name="date_started",
             field=models.DateTimeField(
                 default=None,
-                help_text='Datetime field when the task was started in UTC',
+                help_text="Datetime field when the task was started in UTC",
                 null=True,
-                verbose_name='Started DateTime',
+                verbose_name="Started DateTime",
             ),
         ),
     ]

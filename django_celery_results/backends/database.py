@@ -20,6 +20,7 @@ EXCEPTIONS_TO_CATCH = (InterfaceError,)
 
 try:
     from psycopg2 import InterfaceError as Psycopg2InterfaceError
+
     EXCEPTIONS_TO_CATCH += (Psycopg2InterfaceError,)
 except ImportError:
     pass
@@ -57,28 +58,27 @@ class DatabaseBackend(BaseDictBackend):
 
     def _get_extended_properties(self, request, traceback):
         extended_props = {
-            'periodic_task_name': None,
-            'task_args': None,
-            'task_kwargs': None,
-            'task_name': None,
-            'traceback': None,
-            'worker': None,
+            "periodic_task_name": None,
+            "task_args": None,
+            "task_kwargs": None,
+            "task_name": None,
+            "traceback": None,
+            "worker": None,
         }
-        if request and self.app.conf.find_value_for_key('extended', 'result'):
-
-            if getattr(request, 'argsrepr', None) is not None:
+        if request and self.app.conf.find_value_for_key("extended", "result"):
+            if getattr(request, "argsrepr", None) is not None:
                 # task protocol 2
                 task_args = request.argsrepr
             else:
                 # task protocol 1
-                task_args = getattr(request, 'args', None)
+                task_args = getattr(request, "args", None)
 
-            if getattr(request, 'kwargsrepr', None) is not None:
+            if getattr(request, "kwargsrepr", None) is not None:
                 # task protocol 2
                 task_kwargs = request.kwargsrepr
             else:
                 # task protocol 1
-                task_kwargs = getattr(request, 'kwargs', None)
+                task_kwargs = getattr(request, "kwargs", None)
 
             # Encode input arguments
             if task_args is not None:
@@ -87,16 +87,18 @@ class DatabaseBackend(BaseDictBackend):
             if task_kwargs is not None:
                 _, _, task_kwargs = self.encode_content(task_kwargs)
 
-            periodic_task_name = getattr(request, 'periodic_task_name', None)
+            periodic_task_name = getattr(request, "periodic_task_name", None)
 
-            extended_props.update({
-                'periodic_task_name': periodic_task_name,
-                'task_args': task_args,
-                'task_kwargs': task_kwargs,
-                'task_name': getattr(request, 'task', None),
-                'traceback': traceback,
-                'worker': getattr(request, 'hostname', None),
-            })
+            extended_props.update(
+                {
+                    "periodic_task_name": periodic_task_name,
+                    "task_args": task_args,
+                    "task_kwargs": task_kwargs,
+                    "task_name": getattr(request, "task", None),
+                    "traceback": traceback,
+                    "worker": getattr(request, "hostname", None),
+                }
+            )
 
         return extended_props
 
@@ -111,13 +113,7 @@ class DatabaseBackend(BaseDictBackend):
         return getattr(request, "meta", {})
 
     def _store_result(
-            self,
-            task_id,
-            result,
-            status,
-            traceback=None,
-            request=None,
-            using=None
+        self, task_id, result, status, traceback=None, request=None, using=None
     ):
         """Store return value and status of an executed task."""
         content_type, content_encoding, result = self.encode_content(result)
@@ -131,22 +127,20 @@ class DatabaseBackend(BaseDictBackend):
         )
 
         task_props = {
-            'content_encoding': content_encoding,
-            'content_type': content_type,
-            'meta': encoded_meta,
-            'result': result,
-            'status': status,
-            'task_id': task_id,
-            'traceback': traceback,
-            'using': using,
+            "content_encoding": content_encoding,
+            "content_type": content_type,
+            "meta": encoded_meta,
+            "result": result,
+            "status": status,
+            "task_id": task_id,
+            "traceback": traceback,
+            "using": using,
         }
 
-        task_props.update(
-            self._get_extended_properties(request, traceback)
-        )
+        task_props.update(self._get_extended_properties(request, traceback))
 
         if status == states.STARTED:
-            task_props['date_started'] = Now()
+            task_props["date_started"] = Now()
 
         self.TaskModel._default_manager.store_result(**task_props)
         return result
@@ -155,11 +149,11 @@ class DatabaseBackend(BaseDictBackend):
         """Get task metadata for a task by id."""
         obj = self.TaskModel._default_manager.get_task(task_id)
         res = obj.as_dict()
-        meta = self.decode_content(obj, res.pop('meta', None)) or {}
-        result = self.decode_content(obj, res.get('result'))
+        meta = self.decode_content(obj, res.pop("meta", None)) or {}
+        result = self.decode_content(obj, res.get("result"))
 
-        task_args = res.get('task_args')
-        task_kwargs = res.get('task_kwargs')
+        task_args = res.get("task_args")
+        task_kwargs = res.get("task_kwargs")
         try:
             task_args = self.decode_content(obj, task_args)
             task_kwargs = self.decode_content(obj, task_kwargs)
@@ -180,13 +174,13 @@ class DatabaseBackend(BaseDictBackend):
 
     def encode_content(self, data):
         content_type, content_encoding, content = self._encode(data)
-        if content_encoding == 'binary':
+        if content_encoding == "binary":
             content = b64encode(content)
         return content_type, content_encoding, content
 
     def decode_content(self, obj, content):
         if content:
-            if obj.content_encoding == 'binary':
+            if obj.content_encoding == "binary":
                 content = b64decode(content)
             return self.decode(content)
 
@@ -258,9 +252,8 @@ class DatabaseBackend(BaseDictBackend):
             # with a `select_for_update` lock to prevent race conditions.
             # SELECT FOR UPDATE is not supported on all databases
             try:
-                chord_counter = (
-                    ChordCounter.objects.select_for_update()
-                    .get(group_id=gid)
+                chord_counter = ChordCounter.objects.select_for_update().get(
+                    group_id=gid
                 )
             except ChordCounter.DoesNotExist:
                 logger.warning("Can't find ChordCounter for Group %s", gid)
@@ -277,11 +270,7 @@ class DatabaseBackend(BaseDictBackend):
             deps = chord_counter.group_result(app=self.app)
             if deps.ready():
                 callback = maybe_signature(request.chord, app=self.app)
-                trigger_callback(
-                    app=self.app,
-                    callback=callback,
-                    group_result=deps
-                )
+                trigger_callback(app=self.app, callback=callback, group_result=deps)
 
 
 def trigger_callback(app, callback, group_result):

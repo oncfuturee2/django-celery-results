@@ -1,19 +1,10 @@
 repos:
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.2
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.1
     hooks:
-      - id: pyupgrade
-        args: ["--py36-plus"]
-
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.3.0
-    hooks:
-      - id: flake8
-
-  - repo: https://github.com/asottile/yesqa
-    rev: v1.5.0
-    hooks:
-      - id: yesqa
+      - id: ruff-check
+        args: ["--fix"]
+      - id: ruff-format
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -22,8 +13,3 @@ repos:
       - id: check-toml
       - id: check-yaml
       - id: mixed-line-ending
-
-  - repo: https://github.com/pycqa/isort
-    rev: 8.0.1
-    hooks:
-      - id: isort
