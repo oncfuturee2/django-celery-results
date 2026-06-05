@@ -968,6 +968,206 @@ class test_DatabaseBackend:
         assert self.b.get_status(tid) == states.SUCCESS
         assert self.b.get_result(tid) == 42
 
+    def test_get_extended_properties__with_request_protocol_2(self):
+        request = mock.MagicMock()
+        request.argsrepr = "['a', 1, True]"
+        request.kwargsrepr = "{'c': 6, 'd': 'e'}"
+        request.task = 'my_task'
+        request.hostname = 'celery@worker-1'
+        request.periodic_task_name = 'my_periodic_task'
+
+        traceback = None
+        extended = self.b._get_extended_properties(request, traceback)
+
+        assert extended['periodic_task_name'] == 'my_periodic_task'
+        assert extended['task_name'] == 'my_task'
+        assert extended['task_args'] is not None
+        assert extended['task_kwargs'] is not None
+        assert extended['traceback'] is None
+        assert extended['worker'] == 'celery@worker-1'
+
+    def test_get_extended_properties__with_request_protocol_1(self):
+        request = mock.MagicMock()
+        request.argsrepr = None
+        request.kwargsrepr = None
+        request.args = ['a', 1, True]
+        request.kwargs = {'c': 6, 'd': 'e'}
+        request.task = 'my_task'
+        request.hostname = 'celery@worker-2'
+        request.periodic_task_name = 'periodic_task_2'
+
+        traceback = 'some traceback'
+        extended = self.b._get_extended_properties(request, traceback)
+
+        assert extended['periodic_task_name'] == 'periodic_task_2'
+        assert extended['task_name'] == 'my_task'
+        assert extended['task_args'] is not None
+        assert extended['task_kwargs'] is not None
+        assert extended['traceback'] == 'some traceback'
+        assert extended['worker'] == 'celery@worker-2'
+
+    def test_get_extended_properties__request_none(self):
+        extended = self.b._get_extended_properties(None, None)
+
+        assert extended['periodic_task_name'] is None
+        assert extended['task_args'] is None
+        assert extended['task_kwargs'] is None
+        assert extended['task_name'] is None
+        assert extended['traceback'] is None
+        assert extended['worker'] is None
+
+    def test_get_extended_properties__result_extended_false(self):
+        self.app.conf.result_extended = False
+        self.b = DatabaseBackend(app=self.app)
+
+        request = mock.MagicMock()
+        request.argsrepr = "['a', 1]"
+        request.kwargsrepr = '{}'
+        request.task = 'my_task'
+        request.hostname = 'celery@worker-1'
+        request.periodic_task_name = 'my_periodic_task'
+
+        extended = self.b._get_extended_properties(request, None)
+
+        assert extended['periodic_task_name'] is None
+        assert extended['task_args'] is None
+        assert extended['task_kwargs'] is None
+        assert extended['task_name'] is None
+        assert extended['traceback'] is None
+        assert extended['worker'] is None
+
+    def test_store_result__normal_status_with_extended_properties(self):
+        self.app.conf.result_serializer = 'json'
+        self.b = DatabaseBackend(app=self.app)
+
+        tid = uuid()
+        request = mock.MagicMock()
+        request.argsrepr = "['a', 1, True]"
+        request.kwargsrepr = "{'c': 6, 'd': 'e'}"
+        request.task = 'my_task'
+        request.hostname = 'celery@worker-1'
+        request.periodic_task_name = 'my_periodic_task'
+
+        result = {'foo': 'bar'}
+        self.b._store_result(
+            tid, result, states.SUCCESS, traceback=None, request=request,
+        )
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == states.SUCCESS
+        assert tr.task_name == 'my_task'
+        assert tr.periodic_task_name == 'my_periodic_task'
+        assert tr.worker == 'celery@worker-1'
+        assert tr.date_started is None
+        assert tr.task_args is not None
+        assert tr.task_kwargs is not None
+        assert tr.traceback is None
+        assert tr.content_encoding == 'utf-8'
+        assert tr.content_type == 'application/json'
+
+        decoded = self.b.decode_content(tr, tr.result)
+        assert decoded == {'foo': 'bar'}
+
+    def test_store_result__started_status_sets_date_started(self):
+        self.app.conf.result_serializer = 'json'
+        self.b = DatabaseBackend(app=self.app)
+
+        tid = uuid()
+        request = mock.MagicMock()
+        request.argsrepr = '[]'
+        request.kwargsrepr = '{}'
+        request.task = 'started_task'
+        request.hostname = 'celery@worker-1'
+        request.periodic_task_name = None
+
+        self.b._store_result(
+            tid, None, states.STARTED, traceback=None, request=request,
+        )
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == states.STARTED
+        assert tr.date_started is not None
+        assert tr.task_name == 'started_task'
+        assert tr.worker == 'celery@worker-1'
+        assert tr.periodic_task_name is None
+
+    def test_store_result__request_none(self):
+        self.app.conf.result_serializer = 'json'
+        self.b = DatabaseBackend(app=self.app)
+
+        tid = uuid()
+        self.b._store_result(
+            tid, 42, states.SUCCESS, traceback=None, request=None,
+        )
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == states.SUCCESS
+        assert tr.task_name is None
+        assert tr.periodic_task_name is None
+        assert tr.worker is None
+        assert tr.task_args is None
+        assert tr.task_kwargs is None
+        assert tr.traceback is None
+        assert tr.date_started is None
+
+        decoded = self.b.decode_content(tr, tr.result)
+        assert decoded == 42
+
+    def test_store_result__result_extended_false(self):
+        self.app.conf.result_extended = False
+        self.app.conf.result_serializer = 'json'
+        self.b = DatabaseBackend(app=self.app)
+
+        tid = uuid()
+        request = mock.MagicMock()
+        request.argsrepr = "['a', 1]"
+        request.kwargsrepr = '{}'
+        request.task = 'my_task'
+        request.hostname = 'celery@worker-1'
+        request.periodic_task_name = 'my_periodic_task'
+
+        self.b._store_result(
+            tid, 'result_value', states.SUCCESS,
+            traceback=None, request=request,
+        )
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == states.SUCCESS
+        assert tr.task_name is None
+        assert tr.periodic_task_name is None
+        assert tr.worker is None
+        assert tr.task_args is None
+        assert tr.task_kwargs is None
+        assert tr.traceback is None
+
+        decoded = self.b.decode_content(tr, tr.result)
+        assert decoded == 'result_value'
+
+    def test_store_result__with_traceback(self):
+        self.app.conf.result_serializer = 'json'
+        self.b = DatabaseBackend(app=self.app)
+
+        tid = uuid()
+        request = mock.MagicMock()
+        request.argsrepr = '[]'
+        request.kwargsrepr = '{}'
+        request.task = 'failing_task'
+        request.hostname = 'celery@worker-1'
+        request.periodic_task_name = None
+
+        traceback = 'Traceback (most recent call last):\n  ...'
+        self.b._store_result(
+            tid, None, states.FAILURE,
+            traceback=traceback, request=request,
+        )
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == states.FAILURE
+        assert tr.traceback == traceback
+        assert tr.task_name == 'failing_task'
+        assert tr.worker == 'celery@worker-1'
+        assert tr.date_started is None
+
 
 class DjangoCeleryResultRouter:
     route_app_labels = {"django_celery_results"}
