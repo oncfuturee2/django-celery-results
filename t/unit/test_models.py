@@ -210,6 +210,34 @@ class test_Models(TransactionTestCase):
         except TransactionError:
             pass
 
+        assert GroupResult.objects.get_group(m1.group_id).result is None
+        assert GroupResult.objects.get_group(m2.group_id).result == 'True'
+
+    def test_store_group_result_update_uses_target_db(
+            self, ctype='application/json', cenc='utf-8'):
+        class TransactionError(Exception):
+            pass
+
+        m1 = self.create_group_result()
+        assert set(GroupResult.objects.all()) == set(
+            GroupResult.objects.using("secondary").all()
+        )
+
+        GroupResult.objects.store_group_result(
+            ctype, cenc, m1.group_id, 'first', using='secondary')
+
+        try:
+            with transaction.atomic():
+                GroupResult.objects.store_group_result(
+                    ctype, cenc, m1.group_id, 'second', using='secondary')
+                raise TransactionError()
+        except TransactionError:
+            pass
+
+        assert GroupResult.objects.get_group(m1.group_id).result == 'first'
+        assert GroupResult.objects.using(
+            'secondary').get_group(m1.group_id).result == 'first'
+
     def test_result_batch_deletion(self):
         # Create 200 expired records
         TaskResult.objects.bulk_create(
@@ -254,3 +282,45 @@ class test_ModelsWithoutDefaultDB(TransactionTestCase):
         GroupResult.objects.db_manager(
             self.non_default_test_db
         ).delete_expired(expires=10)
+
+    def test_store_group_result_no_default_db_leak(self):
+        group_id = uuid()
+        GroupResult.objects.db_manager(
+            self.non_default_test_db
+        ).store_group_result(
+            'application/json', 'utf-8', group_id, True)
+
+        stored = GroupResult.objects.db_manager(
+            self.non_default_test_db
+        ).get_group(group_id)
+        assert stored.result == 'True'
+
+        stored2 = GroupResult.objects.db_manager(
+            self.non_default_test_db
+        ).store_group_result(
+            'application/json', 'utf-8', group_id, 'updated')
+
+        assert stored2.result == 'updated'
+
+        stored3 = GroupResult.objects.db_manager(
+            self.non_default_test_db
+        ).get_group(group_id)
+        assert stored3.result == 'updated'
+
+    def test_store_group_result_explicit_using_on_update(self):
+        group_id = uuid()
+        GroupResult.objects.db_manager(
+            self.non_default_test_db
+        ).store_group_result(
+            'application/json', 'utf-8', group_id, 'first')
+
+        GroupResult.objects.db_manager(
+            self.non_default_test_db
+        ).store_group_result(
+            'application/json', 'utf-8', group_id, 'second',
+            using=self.non_default_test_db)
+
+        stored = GroupResult.objects.db_manager(
+            self.non_default_test_db
+        ).get_group(group_id)
+        assert stored.result == 'second'
