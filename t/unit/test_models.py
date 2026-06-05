@@ -226,6 +226,33 @@ class test_Models(TransactionTestCase):
         # All expired records should be gone
         assert TaskResult.objects.get_all_expired(0).count() == 0
 
+    def test_execution_time(self):
+        """Test execution time calculation."""
+        task = self.create_task_result()
+        now_time = now()
+        start_time = now_time - timedelta(seconds=10)
+        
+        # Test with start date missing (only done date present)
+        assert task.date_done is not None
+        assert task.date_started is None
+        assert task.execution_time is None
+        
+        # Test with both dates present
+        TaskResult.objects.filter(task_id=task.task_id).update(
+            date_started=start_time,
+            date_done=now_time
+        )
+        task.refresh_from_db()
+        assert task.execution_time == 10.0
+        
+        # Test with fractional seconds
+        start_time_fractional = now_time - timedelta(milliseconds=500)
+        TaskResult.objects.filter(task_id=task.task_id).update(
+            date_started=start_time_fractional
+        )
+        task.refresh_from_db()
+        assert task.execution_time == 0.5
+
 
 @pytest.mark.usefixtures('depends_on_current_app')
 class test_ModelsWithoutDefaultDB(TransactionTestCase):

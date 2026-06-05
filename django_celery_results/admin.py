@@ -24,11 +24,18 @@ class TaskResultAdmin(admin.ModelAdmin):
     model = TaskResult
     date_hierarchy = 'date_done'
     list_display = ('task_id', 'periodic_task_name', 'task_name', 'date_done',
-                    'status', 'worker')
+                    'status', 'worker', 'execution_time_display')
     list_filter = ('status', 'date_done', 'periodic_task_name', 'task_name',
                    'worker')
     readonly_fields = ('date_created', 'date_started', 'date_done',
-                       'result', 'meta')
+                       'result', 'meta', 'execution_time_display')
+    
+    def execution_time_display(self, obj):
+        """Display execution time in a human-readable format."""
+        if obj.execution_time is not None:
+            return f'{obj.execution_time:.3f}s'
+        return '-'
+    execution_time_display.short_description = _('Execution Time')
     search_fields = ('task_name', 'task_id', 'status', 'task_args',
                      'task_kwargs')
     fieldsets = (
@@ -57,6 +64,7 @@ class TaskResultAdmin(admin.ModelAdmin):
                 'date_created',
                 'date_started',
                 'date_done',
+                'execution_time_display',
                 'traceback',
                 'meta',
             ),
@@ -71,7 +79,7 @@ class TaskResultAdmin(admin.ModelAdmin):
         else:
             return list({
                 field.name for field in self.model._meta.fields
-            })
+            }) + ['execution_time_display']
 
     def terminate_task(self, request, queryset):
         """Terminate selected tasks."""

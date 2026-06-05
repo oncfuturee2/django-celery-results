@@ -18,6 +18,18 @@ TASK_STATE_CHOICES = sorted(zip(ALL_STATES, ALL_STATES))
 class TaskResult(models.Model):
     """Task result/status."""
 
+    @property
+    def execution_time(self):
+        """Return task execution time in seconds.
+        
+        Calculates the time between task start and completion.
+        Returns None if either timestamp is missing or invalid.
+        """
+        if self.date_started and self.date_done:
+            delta = self.date_done - self.date_started
+            return delta.total_seconds()
+        return None
+
     task_id = models.CharField(
         max_length=getattr(
             settings,

@@ -133,6 +133,26 @@ class TaskResultAdminTests(TestCase):
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+    
+    def test_execution_time_display_in_admin(self):
+        """Test execution time display is present in admin."""
+        from datetime import timedelta
+        from django_celery_results.utils import now
+        
+        now_time = now()
+        start_time = now_time - timedelta(seconds=5)
+        TaskResult.objects.filter(pk=self.task_result.pk).update(
+            date_started=start_time,
+            date_done=now_time
+        )
+        self.task_result.refresh_from_db()
+        
+        url = reverse(
+            f"admin:{self.app_name}_{self.model._meta.model_name}_changelist"
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "5.000s")
 
 
 class TaskResultProxyAdminTests(TaskResultAdminTests):
