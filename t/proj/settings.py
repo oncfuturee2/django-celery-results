@@ -22,75 +22,29 @@ sys.path.insert(0, os.path.abspath(os.path.join(BASE_DIR, os.pardir)))
 # support pypy.
 # if not installed, use sqlite as a backup (some tests may fail),
 # otherwise even makemigrations won't run.
-try:
-    from psycopg2cffi import compat
-    compat.register()
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'HOST': os.getenv('DB_POSTGRES_HOST', 'localhost'),
-            'PORT': os.getenv('DB_POSTGRES_PORT', '5432'),
-            'NAME': os.getenv('DB_POSTGRES_DATABASE', 'postgres'),
-            'USER': os.getenv('DB_POSTGRES_USER', 'postgres'),
-            'PASSWORD': os.getenv('DB_POSTGRES_PASSWORD', 'postgres'),
-            'OPTIONS': {
-                'connect_timeout': 1000,
-            },
-        },
-        'secondary': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'HOST': os.getenv('DB_POSTGRES_HOST', 'localhost'),
-            'PORT': os.getenv('DB_POSTGRES_PORT', '5432'),
-            'NAME': os.getenv('DB_POSTGRES_DATABASE', 'postgres'),
-            'USER': os.getenv('DB_POSTGRES_USER', 'postgres'),
-            'PASSWORD': os.getenv('DB_POSTGRES_PASSWORD', 'postgres'),
-            'OPTIONS': {
-                'connect_timeout': 1000,
-            },
-            'TEST': {
-                'MIRROR': 'default',
-            },
-        },
-        'read-only': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'HOST': os.getenv('DB_POSTGRES_HOST', 'localhost'),
-            'PORT': os.getenv('DB_POSTGRES_PORT', '5432'),
-            'NAME': 'read-only-database',
-            'USER': os.getenv('DB_POSTGRES_USER', 'postgres'),
-            'PASSWORD': os.getenv('DB_POSTGRES_PASSWORD', 'postgres'),
-            'OPTIONS': {
-                'connect_timeout': 1000,
-                'options': '-c default_transaction_read_only=on',
-            },
-            'TEST': {
-                'MIRROR': 'default',
-            },
-        },
-    }
-except ImportError:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-            'OPTIONS': {
-                'timeout': 1000,
-            }
-        },
-        'secondary': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-            'OPTIONS': {
-                'timeout': 1000,
-            }
-        },
-        'read-only': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-            'OPTIONS': {
-                'timeout': 1000,
-            }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'OPTIONS': {
+            'timeout': 1000,
+        }
+    },
+    'secondary': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'OPTIONS': {
+            'timeout': 1000,
+        }
+    },
+    'read-only': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'OPTIONS': {
+            'timeout': 1000,
         }
     }
+}
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.9/howto/deployment/checklist/
