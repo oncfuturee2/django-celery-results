@@ -55,6 +55,13 @@ class DatabaseBackend(BaseDictBackend):
                 return True
         return False
 
+    def _get_task_argument(self, request, prop_name):
+        """Extract task argument for both Celery task protocol 1 and 2."""
+        val = getattr(request, f'{prop_name}repr', None)
+        if val is not None:
+            return val
+        return getattr(request, prop_name, None)
+
     def _get_extended_properties(self, request, traceback):
         extended_props = {
             'periodic_task_name': None,
@@ -65,20 +72,8 @@ class DatabaseBackend(BaseDictBackend):
             'worker': None,
         }
         if request and self.app.conf.find_value_for_key('extended', 'result'):
-
-            if getattr(request, 'argsrepr', None) is not None:
-                # task protocol 2
-                task_args = request.argsrepr
-            else:
-                # task protocol 1
-                task_args = getattr(request, 'args', None)
-
-            if getattr(request, 'kwargsrepr', None) is not None:
-                # task protocol 2
-                task_kwargs = request.kwargsrepr
-            else:
-                # task protocol 1
-                task_kwargs = getattr(request, 'kwargs', None)
+            task_args = self._get_task_argument(request, 'args')
+            task_kwargs = self._get_task_argument(request, 'kwargs')
 
             # Encode input arguments
             if task_args is not None:
