@@ -195,20 +195,46 @@ class test_Models(TransactionTestCase):
 
         m1 = self.create_group_result()
         m2 = self.create_group_result()
-        assert set(GroupResult.objects.all()) == set(
-            GroupResult.objects.using("secondary").all()
+
+        try:
+            with transaction.atomic():
+                GroupResult.objects.store_group_result(
+                    ctype, cenc, m1.group_id, 'default-update')
+                GroupResult.objects.store_group_result(
+                    ctype, cenc, m2.group_id, 'secondary-update',
+                    using='secondary')
+                raise TransactionError()
+        except TransactionError:
+            pass
+
+        assert GroupResult.objects.get_group(m1.group_id).result is None
+        assert GroupResult.objects.using('secondary').get(
+            group_id=m2.group_id
+        ).result == 'secondary-update'
+
+    def test_store_group_result_updates_existing_result_in_target_database(
+        self, ctype='application/json', cenc='utf-8'
+    ):
+        class TransactionError(Exception):
+            pass
+
+        group_id = uuid()
+        GroupResult.objects.store_group_result(
+            ctype, cenc, group_id, 'initial', using='secondary'
         )
 
         try:
             with transaction.atomic():
                 GroupResult.objects.store_group_result(
-                    ctype, cenc, m1.group_id, True)
-                GroupResult.objects.store_group_result(
-                    ctype, cenc, m2.group_id, True,
-                    using='secondary')
+                    ctype, cenc, group_id, 'updated', using='secondary'
+                )
                 raise TransactionError()
         except TransactionError:
             pass
+
+        assert GroupResult.objects.using('secondary').get(
+            group_id=group_id
+        ).result == 'updated'
 
     def test_result_batch_deletion(self):
         # Create 200 expired records
@@ -254,3 +280,27 @@ class test_ModelsWithoutDefaultDB(TransactionTestCase):
         GroupResult.objects.db_manager(
             self.non_default_test_db
         ).delete_expired(expires=10)
+
+    def test_store_group_result_avoids_default_database_on_update(
+        self, ctype='application/json', cenc='utf-8'
+    ):
+        group_id = uuid()
+
+        GroupResult.objects.store_group_result(
+            ctype,
+            cenc,
+            group_id,
+            'initial',
+            using=self.non_default_test_db,
+        )
+        GroupResult.objects.store_group_result(
+            ctype,
+            cenc,
+            group_id,
+            'updated',
+            using=self.non_default_test_db,
+        )
+
+        assert GroupResult.objects.using(self.non_default_test_db).get(
+            group_id=group_id
+        ).result == 'updated'

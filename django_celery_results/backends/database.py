@@ -215,13 +215,13 @@ class DatabaseBackend(BaseDictBackend):
                 res["result"] = result_from_tuple(decoded_result, app=self.app)
             return res
 
-    def _save_group(self, group_id, group_result):
+    def _save_group(self, group_id, group_result, using=None):
         """Store return value of group"""
         content_type, content_encoding, result = self.encode_content(
             group_result.as_tuple()
         )
         self.GroupModel._default_manager.store_group_result(
-            content_type, content_encoding, group_id, result
+            content_type, content_encoding, group_id, result, using=using
         )
         return group_result
 
