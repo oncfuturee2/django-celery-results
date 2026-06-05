@@ -47,7 +47,6 @@ class test_Models(TransactionTestCase):
         assert TaskResult.objects.get_task(m1.task_id).status == states.SUCCESS
         assert TaskResult.objects.get_task(m2.task_id).status == states.SUCCESS
 
-        # Have to avoid save() because it applies the auto_now=True.
         TaskResult.objects.filter(
             task_id=m1.task_id
         ).update(date_done=now() - timedelta(days=10))
@@ -63,6 +62,27 @@ class test_Models(TransactionTestCase):
             self.app.conf.result_expires,
         )
         assert m1 not in TaskResult.objects.all()
+
+    def test_duration_returns_total_seconds(self):
+        started_at = now()
+        task_result = TaskResult(
+            task_id=uuid(),
+            date_started=started_at,
+            date_done=started_at + timedelta(seconds=12.5),
+        )
+
+        assert task_result.duration() == pytest.approx(12.5)
+
+    def test_duration_returns_none_without_start_time(self):
+        task_result = TaskResult(task_id=uuid(), date_done=now())
+
+        assert task_result.duration() is None
+
+    def test_duration_returns_none_without_completion_time(self):
+        task_result = TaskResult(task_id=uuid(), date_started=now())
+        task_result.date_done = None
+
+        assert task_result.duration() is None
 
     def test_store_result(self, ctype='application/json', cenc='utf-8'):
         """
@@ -124,7 +144,6 @@ class test_Models(TransactionTestCase):
                 'exception_safe_to_retry',
                 return_value=backend.exception_safe_to_retry
             ) as patched_safe_to_retry:
-                # InterfaceError should be re-raised
                 with pytest.raises(InterfaceError):
                     backend.store_result(
                         m.task_id,
@@ -169,9 +188,6 @@ class test_Models(TransactionTestCase):
                 'exception_safe_to_retry',
                 return_value=backend.exception_safe_to_retry
             ) as patched_safe_to_retry:
-                # InterfaceError should be hidden
-                # And new connection opened
-                # Then unpatched function called for retry
                 backend.store_result(
                     m.task_id,
                     result=states.SUCCESS,
@@ -211,7 +227,6 @@ class test_Models(TransactionTestCase):
             pass
 
     def test_result_batch_deletion(self):
-        # Create 200 expired records
         TaskResult.objects.bulk_create(
             [
                 TaskResult(task_id=uuid(), date_done=now() - timedelta(days=1))
@@ -220,10 +235,8 @@ class test_Models(TransactionTestCase):
         )
         assert TaskResult.objects.get_all_expired(0).count() == 200
 
-        # Run deletion in small batches
         TaskResult.objects.delete_expired(0, batch_size=25)
 
-        # All expired records should be gone
         assert TaskResult.objects.get_all_expired(0).count() == 0
 
 

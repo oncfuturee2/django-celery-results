@@ -102,7 +102,6 @@ class TaskResult(models.Model):
         verbose_name = _('task result')
         verbose_name_plural = _('task results')
 
-        # Explicit names to solve https://code.djangoproject.com/ticket/33483
         indexes = [
             models.Index(fields=['task_name'],
                          name='django_cele_task_na_08aec9_idx'),
@@ -131,6 +130,13 @@ class TaskResult(models.Model):
             'meta': self.meta,
             'worker': self.worker
         }
+
+    def duration(self):
+        if self.date_started is None or self.date_done is None:
+            return None
+        return (self.date_done - self.date_started).total_seconds()
+
+    duration.short_description = _('Duration (seconds)')
 
     def __str__(self):
         return '<Task: {0.task_id} ({0.status})>'.format(self)
@@ -208,7 +214,7 @@ class GroupResult(models.Model):
     content_encoding = models.CharField(
         max_length=64,
         verbose_name=_("Result Encoding"),
-        help_text=_("The encoding used to save the task result data"),
+        help_text=_("The encoding used to save the result data"),
     )
     result = models.TextField(
         null=True, default=None, editable=False,
@@ -236,7 +242,6 @@ class GroupResult(models.Model):
         verbose_name = _('group result')
         verbose_name_plural = _('group results')
 
-        # Explicit names to solve https://code.djangoproject.com/ticket/33483
         indexes = [
             models.Index(fields=['date_created'],
                          name='django_cele_date_cr_bd6c1d_idx'),

@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -18,6 +19,7 @@ from django.urls import (
 
 from django_celery_results.admin import TaskResultAdmin
 from django_celery_results.models import TaskResult
+from django_celery_results.utils import now
 
 
 @pytest.mark.usefixtures('depends_on_current_app')
@@ -37,30 +39,29 @@ class test_Admin(TestCase):
         taskmeta, _ = TaskResult.objects.get_or_create(task_id=task_id)
         return taskmeta
 
+    def test_get_readonly_fields_includes_duration(self):
+        readonly_fields = self.task_admin.get_readonly_fields(self.factory.get('/'))
+
+        self.assertIn('duration', readonly_fields)
+
     @patch('django_celery_results.admin.celery_app.control.terminate')
     def test_terminate_task_success(self, mock_terminate):
-        # Create mock request
         request = self.factory.post('/')
         request.user = MagicMock()
         self._apply_middleware(request)
 
-        # Create mock queryset
         tr1 = self.create_task_result()
         tr2 = self.create_task_result()
         task_id_list = [tr1.task_id, tr2.task_id]
 
-        # Use queryset
         queryset = TaskResult.objects.filter(task_id__in=task_id_list)
 
-        # Call the terminate_task method
         self.task_admin.terminate_task(request, queryset)
 
-        # Verify terminate was called with the correct task IDs
         mock_terminate.assert_called_once()
         called_args = mock_terminate.call_args[0][0]
         self.assertEqual(sorted(called_args), sorted(task_id_list))
 
-        # Verify message_user was called with the success message
         messages = list(get_messages(request))
         self.assertEqual(len(messages), 1)
         self.assertEqual(
@@ -70,31 +71,24 @@ class test_Admin(TestCase):
 
     @patch('django_celery_results.admin.celery_app.control.terminate')
     def test_terminate_task_failure(self, mock_terminate):
-        # Create mock request
         request = self.factory.post('/')
         request.user = MagicMock()
         self._apply_middleware(request)
 
-        # Create mock queryset
         tr1 = self.create_task_result()
         tr2 = self.create_task_result()
         task_id_list = [tr1.task_id, tr2.task_id]
 
-        # Use queryset
         queryset = TaskResult.objects.filter(task_id__in=task_id_list)
 
-        # Simulate an exception in terminate
         mock_terminate.side_effect = Exception("Termination failed")
 
-        # Call the terminate_task method
         self.task_admin.terminate_task(request, queryset)
 
-        # Verify terminate was called with the correct task IDs
         mock_terminate.assert_called_once()
         called_args = mock_terminate.call_args[0][0]
         self.assertEqual(sorted(called_args), sorted(task_id_list))
 
-        # Verify message_user was called with the error message
         messages = list(get_messages(request))
         self.assertEqual(len(messages), 1)
         self.assertIn(
@@ -118,6 +112,12 @@ class TaskResultAdminTests(TestCase):
         self.task_result = TaskResult.objects.create(
             task_id=uuid(), task_name="test_task"
         )
+        started_at = now()
+        TaskResult.objects.filter(pk=self.task_result.pk).update(
+            date_started=started_at,
+            date_done=started_at + timedelta(seconds=12.5),
+        )
+        self.task_result.refresh_from_db()
 
     def test_add_view(self):
         url = reverse(
@@ -126,6 +126,15 @@ class TaskResultAdminTests(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
+    def test_changelist_view_displays_duration(self):
+        url = reverse(
+            f"admin:{self.app_name}_{self.model._meta.model_name}_changelist"
+        )
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '12.5')
+
     def test_change_view(self):
         url = reverse(
             f"admin:{self.app_name}_{self.model._meta.model_name}_change",
@@ -133,6 +142,7 @@ class TaskResultAdminTests(TestCase):
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '12.5')
 
 
 class TaskResultProxyAdminTests(TaskResultAdminTests):
@@ -148,8 +158,6 @@ class TaskResultProxyAdminTests(TaskResultAdminTests):
         cls.model = TaskResultProxy
         admin.site.register(TaskResultProxy, TaskResultAdmin)
 
-        # The temporary registration of admin requires refreshing the URL cache
-        # Otherwise, it cannot be resolved
         default_resolver = get_resolver()
         cls.ori_url_patterns_0 = default_resolver.url_patterns[0]
         get_resolver().url_patterns[0] = path("admin/", admin.site.urls)
@@ -159,13 +167,11 @@ class TaskResultProxyAdminTests(TaskResultAdminTests):
     def tearDownClass(cls):
         super().tearDownClass()
 
-        # Unregister the proxy model
         admin.site.unregister(cls.model)
         app_config = apps.get_app_config(cls.app_name)
         model_name = cls.model._meta.model_name
         if model_name in app_config.models:
             del app_config.models[model_name]
 
-        # Restore the original URL patterns
         get_resolver().url_patterns[0] = cls.ori_url_patterns_0
         clear_url_caches()

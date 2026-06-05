@@ -24,11 +24,11 @@ class TaskResultAdmin(admin.ModelAdmin):
     model = TaskResult
     date_hierarchy = 'date_done'
     list_display = ('task_id', 'periodic_task_name', 'task_name', 'date_done',
-                    'status', 'worker')
+                    'duration', 'status', 'worker')
     list_filter = ('status', 'date_done', 'periodic_task_name', 'task_name',
                    'worker')
     readonly_fields = ('date_created', 'date_started', 'date_done',
-                       'result', 'meta')
+                       'duration', 'result', 'meta')
     search_fields = ('task_name', 'task_id', 'status', 'task_args',
                      'task_kwargs')
     fieldsets = (
@@ -57,6 +57,7 @@ class TaskResultAdmin(admin.ModelAdmin):
                 'date_created',
                 'date_started',
                 'date_done',
+                'duration',
                 'traceback',
                 'meta',
             ),
@@ -68,10 +69,10 @@ class TaskResultAdmin(admin.ModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         if ALLOW_EDITS:
             return self.readonly_fields
-        else:
-            return list({
-                field.name for field in self.model._meta.fields
-            })
+        return tuple(dict.fromkeys(
+            list(self.readonly_fields) +
+            [field.name for field in self.model._meta.fields]
+        ))
 
     def terminate_task(self, request, queryset):
         """Terminate selected tasks."""
