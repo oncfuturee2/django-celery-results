@@ -210,6 +210,9 @@ class test_Models(TransactionTestCase):
         except TransactionError:
             pass
 
+        assert GroupResult.objects.get(group_id=m1.group_id).result is None
+        assert GroupResult.objects.using('secondary').get(group_id=m2.group_id).result == 'True'
+
     def test_result_batch_deletion(self):
         # Create 200 expired records
         TaskResult.objects.bulk_create(
