@@ -4,19 +4,16 @@ from datetime import timedelta
 import pytest
 from billiard.einfo import ExceptionInfo
 from celery import result, states, uuid
-from kombu.utils.encoding import bytes_to_str
-
 from django_celery_results.backends.cache import CacheBackend
+from kombu.utils.encoding import bytes_to_str
 
 
 class SomeClass:
-
     def __init__(self, data):
         self.data = data
 
 
 class test_CacheBackend:
-
     def setup_method(self):
         self.b = CacheBackend(app=self.app)
 
@@ -61,8 +58,8 @@ class test_CacheBackend:
         assert rindb.get('bar').data == 12345
 
     def test_convert_key_from_byte_to_str(self):
-        """ Tests that key in byte form passed into cache
-            are succesfully completed """
+        """Tests that key in byte form passed into cache
+        are succesfully completed"""
         tid = bytes_to_str(uuid())
 
         assert self.b.get_status(tid) == states.PENDING
@@ -95,10 +92,10 @@ class test_CacheBackend:
 
 
 class test_custom_CacheBackend:
-
     def test_custom_cache_backend(self):
         self.app.conf.cache_backend = 'dummy'
         b = CacheBackend(app=self.app)
         assert (
-            b.cache_backend.__class__.__module__ == 'django.core.cache.backends.dummy'  # noqa
+            b.cache_backend.__class__.__module__
+            == 'django.core.cache.backends.dummy'
         )

@@ -20,77 +20,106 @@ class TaskResult(models.Model):
 
     task_id = models.CharField(
         max_length=getattr(
-            settings,
-            'DJANGO_CELERY_RESULTS_TASK_ID_MAX_LENGTH',
-            255
+            settings, 'DJANGO_CELERY_RESULTS_TASK_ID_MAX_LENGTH', 255
         ),
         unique=True,
         verbose_name=_('Task ID'),
-        help_text=_('Celery ID for the Task that was run'))
+        help_text=_('Celery ID for the Task that was run'),
+    )
     periodic_task_name = models.CharField(
-        null=True, max_length=255,
+        null=True,
+        max_length=255,
         verbose_name=_('Periodic Task Name'),
-        help_text=_('Name of the Periodic Task which was run'))
+        help_text=_('Name of the Periodic Task which was run'),
+    )
     task_name = models.CharField(
-        null=True, max_length=getattr(
-            settings,
-            'DJANGO_CELERY_RESULTS_TASK_ID_MAX_LENGTH',
-            255
+        null=True,
+        max_length=getattr(
+            settings, 'DJANGO_CELERY_RESULTS_TASK_ID_MAX_LENGTH', 255
         ),
         verbose_name=_('Task Name'),
-        help_text=_('Name of the Task which was run'))
+        help_text=_('Name of the Task which was run'),
+    )
     task_args = models.TextField(
         null=True,
         verbose_name=_('Task Positional Arguments'),
-        help_text=_('JSON representation of the positional arguments '
-                    'used with the task'))
+        help_text=_(
+            'JSON representation of the positional arguments '
+            'used with the task'
+        ),
+    )
     task_kwargs = models.TextField(
         null=True,
         verbose_name=_('Task Named Arguments'),
-        help_text=_('JSON representation of the named arguments '
-                    'used with the task'))
+        help_text=_(
+            'JSON representation of the named arguments used with the task'
+        ),
+    )
     status = models.CharField(
-        max_length=50, default=states.PENDING,
+        max_length=50,
+        default=states.PENDING,
         verbose_name=_('Task State'),
-        help_text=_('Current state of the task being run'))
+        help_text=_('Current state of the task being run'),
+    )
     worker = models.CharField(
-        max_length=100, default=None, null=True,
-        verbose_name=_('Worker'), help_text=_('Worker that executes the task')
+        max_length=100,
+        default=None,
+        null=True,
+        verbose_name=_('Worker'),
+        help_text=_('Worker that executes the task'),
     )
     content_type = models.CharField(
         max_length=128,
         verbose_name=_('Result Content Type'),
-        help_text=_('Content type of the result data'))
+        help_text=_('Content type of the result data'),
+    )
     content_encoding = models.CharField(
         max_length=64,
         verbose_name=_('Result Encoding'),
-        help_text=_('The encoding used to save the task result data'))
+        help_text=_('The encoding used to save the task result data'),
+    )
     result = models.TextField(
-        null=True, default=None, editable=False,
+        null=True,
+        default=None,
+        editable=False,
         verbose_name=_('Result Data'),
-        help_text=_('The data returned by the task.  '
-                    'Use content_encoding and content_type fields to read.'))
+        help_text=_(
+            'The data returned by the task.  '
+            'Use content_encoding and content_type fields to read.'
+        ),
+    )
     date_created = models.DateTimeField(
         auto_now_add=True,
         verbose_name=_('Created DateTime'),
-        help_text=_('Datetime field when the task result was created in UTC'))
+        help_text=_('Datetime field when the task result was created in UTC'),
+    )
     date_started = models.DateTimeField(
-        null=True, default=None,
+        null=True,
+        default=None,
         verbose_name=_('Started DateTime'),
-        help_text=_('Datetime field when the task was started in UTC'))
+        help_text=_('Datetime field when the task was started in UTC'),
+    )
     date_done = models.DateTimeField(
         auto_now=True,
         verbose_name=_('Completed DateTime'),
-        help_text=_('Datetime field when the task was completed in UTC'))
+        help_text=_('Datetime field when the task was completed in UTC'),
+    )
     traceback = models.TextField(
-        blank=True, null=True,
+        blank=True,
+        null=True,
         verbose_name=_('Traceback'),
-        help_text=_('Text of the traceback if the task generated one'))
+        help_text=_('Text of the traceback if the task generated one'),
+    )
     meta = models.TextField(
-        null=True, default=None, editable=False,
+        null=True,
+        default=None,
+        editable=False,
         verbose_name=_('Task Meta Information'),
-        help_text=_('JSON meta information about the task, '
-                    'such as information on child tasks'))
+        help_text=_(
+            'JSON meta information about the task, '
+            'such as information on child tasks'
+        ),
+    )
 
     objects = managers.TaskResultManager()
 
@@ -104,18 +133,25 @@ class TaskResult(models.Model):
 
         # Explicit names to solve https://code.djangoproject.com/ticket/33483
         indexes = [
-            models.Index(fields=['task_name'],
-                         name='django_cele_task_na_08aec9_idx'),
-            models.Index(fields=['status'],
-                         name='django_cele_status_9b6201_idx'),
-            models.Index(fields=['worker'],
-                         name='django_cele_worker_d54dd8_idx'),
-            models.Index(fields=['date_created'],
-                         name='django_cele_date_cr_f04a50_idx'),
-            models.Index(fields=['date_done'],
-                         name='django_cele_date_do_f59aad_idx'),
-            models.Index(fields=['periodic_task_name'],
-                         name='django_cele_periodi_1993cf_idx'),
+            models.Index(
+                fields=['task_name'], name='django_cele_task_na_08aec9_idx'
+            ),
+            models.Index(
+                fields=['status'], name='django_cele_status_9b6201_idx'
+            ),
+            models.Index(
+                fields=['worker'], name='django_cele_worker_d54dd8_idx'
+            ),
+            models.Index(
+                fields=['date_created'], name='django_cele_date_cr_f04a50_idx'
+            ),
+            models.Index(
+                fields=['date_done'], name='django_cele_date_do_f59aad_idx'
+            ),
+            models.Index(
+                fields=['periodic_task_name'],
+                name='django_cele_periodi_1993cf_idx',
+            ),
         ]
 
     def as_dict(self):
@@ -129,7 +165,7 @@ class TaskResult(models.Model):
             'date_done': self.date_done,
             'traceback': self.traceback,
             'meta': self.meta,
-            'worker': self.worker
+            'worker': self.worker,
         }
 
     def __str__(self):
@@ -141,23 +177,22 @@ class ChordCounter(models.Model):
 
     group_id = models.CharField(
         max_length=getattr(
-            settings,
-            "DJANGO_CELERY_RESULTS_TASK_ID_MAX_LENGTH",
-            255),
+            settings, 'DJANGO_CELERY_RESULTS_TASK_ID_MAX_LENGTH', 255
+        ),
         unique=True,
-        verbose_name=_("Group ID"),
-        help_text=_("Celery ID for the Chord header group"),
+        verbose_name=_('Group ID'),
+        help_text=_('Celery ID for the Chord header group'),
     )
     sub_tasks = models.TextField(
         help_text=_(
-            "JSON serialized list of task result tuples. "
-            "use .group_result() to decode"
+            'JSON serialized list of task result tuples. '
+            'use .group_result() to decode'
         )
     )
     count = models.PositiveIntegerField(
         help_text=_(
-            "Starts at len(chord header) and decrements after each task is "
-            "finished"
+            'Starts at len(chord header) and decrements after each task is '
+            'finished'
         )
     )
 
@@ -171,9 +206,11 @@ class ChordCounter(models.Model):
         """
         return CeleryGroupResult(
             self.group_id,
-            [result_from_tuple(r, app=app)
-             for r in json.loads(self.sub_tasks)],
-            app=app
+            [
+                result_from_tuple(r, app=app)
+                for r in json.loads(self.sub_tasks)
+            ],
+            app=app,
         )
 
 
@@ -182,39 +219,42 @@ class GroupResult(models.Model):
 
     group_id = models.CharField(
         max_length=getattr(
-            settings,
-            "DJANGO_CELERY_RESULTS_TASK_ID_MAX_LENGTH",
-            255
+            settings, 'DJANGO_CELERY_RESULTS_TASK_ID_MAX_LENGTH', 255
         ),
         unique=True,
-        verbose_name=_("Group ID"),
-        help_text=_("Celery ID for the Group that was run"),
+        verbose_name=_('Group ID'),
+        help_text=_('Celery ID for the Group that was run'),
     )
     date_created = models.DateTimeField(
         auto_now_add=True,
-        verbose_name=_("Created DateTime"),
-        help_text=_("Datetime field when the group result was created in UTC"),
+        verbose_name=_('Created DateTime'),
+        help_text=_('Datetime field when the group result was created in UTC'),
     )
     date_done = models.DateTimeField(
         auto_now=True,
-        verbose_name=_("Completed DateTime"),
-        help_text=_("Datetime field when the group was completed in UTC"),
+        verbose_name=_('Completed DateTime'),
+        help_text=_('Datetime field when the group was completed in UTC'),
     )
     content_type = models.CharField(
         max_length=128,
-        verbose_name=_("Result Content Type"),
-        help_text=_("Content type of the result data"),
+        verbose_name=_('Result Content Type'),
+        help_text=_('Content type of the result data'),
     )
     content_encoding = models.CharField(
         max_length=64,
-        verbose_name=_("Result Encoding"),
-        help_text=_("The encoding used to save the task result data"),
+        verbose_name=_('Result Encoding'),
+        help_text=_('The encoding used to save the task result data'),
     )
     result = models.TextField(
-        null=True, default=None, editable=False,
+        null=True,
+        default=None,
+        editable=False,
         verbose_name=_('Result Data'),
-        help_text=_('The data returned by the task.  '
-                    'Use content_encoding and content_type fields to read.'))
+        help_text=_(
+            'The data returned by the task.  '
+            'Use content_encoding and content_type fields to read.'
+        ),
+    )
 
     def as_dict(self):
         return {
@@ -238,8 +278,10 @@ class GroupResult(models.Model):
 
         # Explicit names to solve https://code.djangoproject.com/ticket/33483
         indexes = [
-            models.Index(fields=['date_created'],
-                         name='django_cele_date_cr_bd6c1d_idx'),
-            models.Index(fields=['date_done'],
-                         name='django_cele_date_do_caae0e_idx'),
+            models.Index(
+                fields=['date_created'], name='django_cele_date_cr_bd6c1d_idx'
+            ),
+            models.Index(
+                fields=['date_done'], name='django_cele_date_do_caae0e_idx'
+            ),
         ]

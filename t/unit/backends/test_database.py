@@ -13,13 +13,11 @@ from celery.utils.serialization import b64decode
 from celery.worker.request import Request
 from celery.worker.strategy import hybrid_to_proto2
 from django.test import TransactionTestCase
-
 from django_celery_results.backends.database import DatabaseBackend
 from django_celery_results.models import ChordCounter, TaskResult
 
 
 class SomeClass:
-
     def __init__(self, data):
         self.data = data
 
@@ -27,17 +25,25 @@ class SomeClass:
 @pytest.mark.django_db()
 @pytest.mark.usefixtures('depends_on_current_app')
 class test_DatabaseBackend:
-
     @pytest.fixture(autouse=True)
     def setup_backend(self):
         self.app.conf.result_serializer = 'json'
         self.app.conf.result_backend = (
-            'django_celery_results.backends:DatabaseBackend')
+            'django_celery_results.backends:DatabaseBackend'
+        )
         self.app.conf.result_extended = True
         self.b = DatabaseBackend(app=self.app)
 
-    def _create_request(self, task_id, name, args, kwargs,
-                        argsrepr=None, kwargsrepr=None, task_protocol=2):
+    def _create_request(
+        self,
+        task_id,
+        name,
+        args,
+        kwargs,
+        argsrepr=None,
+        kwargsrepr=None,
+        task_protocol=2,
+    ):
         msg = self.app.amqp.task_protocols[task_protocol](
             task_id=task_id,
             name=name,
@@ -89,14 +95,18 @@ class test_DatabaseBackend:
         assert mindb.get('result').get('bar').data == 12345
         assert len(mindb.get('worker')) > 1
         assert mindb.get('task_name') == 'my_task'
-        assert bool(re.match(
-            r"\['a', 1, <.*SomeClass object at .*>\]",
-            mindb.get('task_args')
-        ))
-        assert bool(re.match(
-            r"{'c': 6, 'd': 'e', 'f': <.*SomeClass object at .*>}",
-            mindb.get('task_kwargs')
-        ))
+        assert bool(
+            re.match(
+                r"\['a', 1, <.*SomeClass object at .*>\]",
+                mindb.get('task_args'),
+            )
+        )
+        assert bool(
+            re.match(
+                r"{'c': 6, 'd': 'e', 'f': <.*SomeClass object at .*>}",
+                mindb.get('task_kwargs'),
+            )
+        )
 
         # check task_result object
         tr = TaskResult.objects.get(task_id=tid2)
@@ -119,14 +129,18 @@ class test_DatabaseBackend:
         tr.task_kwargs = task_kwargs2
         tr.save()
         mindb = self.b.get_task_meta(tid2)
-        assert bool(re.match(
-            r"\['a', 1, <.*SomeClass object at .*>\]",
-            mindb.get('task_args')
-        ))
-        assert bool(re.match(
-            r"{'c': 6, 'd': 'e', 'f': <.*SomeClass object at .*>}",
-            mindb.get('task_kwargs')
-        ))
+        assert bool(
+            re.match(
+                r"\['a', 1, <.*SomeClass object at .*>\]",
+                mindb.get('task_args'),
+            )
+        )
+        assert bool(
+            re.match(
+                r"{'c': 6, 'd': 'e', 'f': <.*SomeClass object at .*>}",
+                mindb.get('task_kwargs'),
+            )
+        )
         ar = AsyncResult(tid2)
         assert ar.args == mindb.get('task_args')
         assert ar.kwargs == mindb.get('task_kwargs')
@@ -161,14 +175,18 @@ class test_DatabaseBackend:
         assert mindb.get('result') == 'foo'
         assert mindb.get('task_name') == 'my_task'
         assert len(mindb.get('worker')) > 1
-        assert bool(re.match(
-            r"\['a', 1, <.*SomeClass object at .*>\]",
-            mindb.get('task_args')
-        ))
-        assert bool(re.match(
-            r"{'c': 6, 'd': 'e', 'f': <.*SomeClass object at .*>}",
-            mindb.get('task_kwargs')
-        ))
+        assert bool(
+            re.match(
+                r"\['a', 1, <.*SomeClass object at .*>\]",
+                mindb.get('task_args'),
+            )
+        )
+        assert bool(
+            re.match(
+                r"{'c': 6, 'd': 'e', 'f': <.*SomeClass object at .*>}",
+                mindb.get('task_kwargs'),
+            )
+        )
 
         # check task_result object
         tr = TaskResult.objects.get(task_id=tid2)
@@ -203,14 +221,18 @@ class test_DatabaseBackend:
         assert mindb.get('result') == b'foo'
         assert mindb.get('task_name') == 'my_task'
         assert len(mindb.get('worker')) > 1
-        assert bool(re.match(
-            r"\['a', 1, <.*SomeClass object at .*>\]",
-            mindb.get('task_args')
-        ))
-        assert bool(re.match(
-            r"{'c': 6, 'd': 'e', 'f': <.*SomeClass object at .*>}",
-            mindb.get('task_kwargs')
-        ))
+        assert bool(
+            re.match(
+                r"\['a', 1, <.*SomeClass object at .*>\]",
+                mindb.get('task_args'),
+            )
+        )
+        assert bool(
+            re.match(
+                r"{'c': 6, 'd': 'e', 'f': <.*SomeClass object at .*>}",
+                mindb.get('task_kwargs'),
+            )
+        )
 
         # check task_result objects
         tr = TaskResult.objects.get(task_id=tid2)
@@ -535,9 +557,7 @@ class test_DatabaseBackend:
         result = None
 
         # inject request meta arbitrary data
-        request.meta = {
-            'key': 'value'
-        }
+        request.meta = {'key': 'value'}
 
         self.b.mark_as_done(tid2, result, request=request)
         mindb = self.b.get_task_meta(tid2)
@@ -783,15 +803,15 @@ class test_DatabaseBackend:
         request = mock.MagicMock()
         request.id = subtasks[0].id
         request.group = gid
-        request.task = "my_task"
-        request.args = ["a", 1, "password"]
-        request.kwargs = {"c": 3, "d": "e", "password": "password"}
-        request.argsrepr = "argsrepr"
-        request.kwargsrepr = "kwargsrepr"
-        request.hostname = "celery@ip-0-0-0-0"
-        request.periodic_task_name = "my_periodic_task"
+        request.task = 'my_task'
+        request.args = ['a', 1, 'password']
+        request.kwargs = {'c': 3, 'd': 'e', 'password': 'password'}
+        request.argsrepr = 'argsrepr'
+        request.kwargsrepr = 'kwargsrepr'
+        request.hostname = 'celery@ip-0-0-0-0'
+        request.periodic_task_name = 'my_periodic_task'
         request.ignore_result = False
-        result = {"foo": "baz"}
+        result = {'foo': 'baz'}
 
         self.b.mark_as_done(tid1, result, request=request)
 
@@ -833,16 +853,16 @@ class test_DatabaseBackend:
         request = mock.MagicMock()
         request.id = subtasks[0].id
         request.group = gid
-        request.task = "my_task"
-        request.args = ["a", 1, "password"]
-        request.kwargs = {"c": 3, "d": "e", "password": "password"}
-        request.argsrepr = "argsrepr"
-        request.kwargsrepr = "kwargsrepr"
-        request.hostname = "celery@ip-0-0-0-0"
-        request.periodic_task_name = "my_periodic_task"
+        request.task = 'my_task'
+        request.args = ['a', 1, 'password']
+        request.kwargs = {'c': 3, 'd': 'e', 'password': 'password'}
+        request.argsrepr = 'argsrepr'
+        request.kwargsrepr = 'kwargsrepr'
+        request.hostname = 'celery@ip-0-0-0-0'
+        request.periodic_task_name = 'my_periodic_task'
         request.ignore_result = False
         request.chord.id = cid
-        result = {"foo": "baz"}
+        result = {'foo': 'baz'}
 
         # Trigger an exception when the callback is triggered
         request.chord.delay.side_effect = ValueError()
@@ -879,15 +899,15 @@ class test_DatabaseBackend:
         request = mock.MagicMock()
         request.id = tid1
         request.group = gid
-        request.task = "my_task"
-        request.args = ["a", 1, "password"]
-        request.kwargs = {"c": 3, "d": "e", "password": "password"}
-        request.argsrepr = "argsrepr"
-        request.kwargsrepr = "kwargsrepr"
-        request.hostname = "celery@ip-0-0-0-0"
-        request.periodic_task_name = "my_periodic_task"
+        request.task = 'my_task'
+        request.args = ['a', 1, 'password']
+        request.kwargs = {'c': 3, 'd': 'e', 'password': 'password'}
+        request.argsrepr = 'argsrepr'
+        request.kwargsrepr = 'kwargsrepr'
+        request.hostname = 'celery@ip-0-0-0-0'
+        request.periodic_task_name = 'my_periodic_task'
         request.chord.id = cid
-        result = {"foo": "baz"}
+        result = {'foo': 'baz'}
 
         self.b.mark_as_done(tid1, result, request=request)
 
@@ -960,9 +980,9 @@ class test_DatabaseBackend:
 
         assert self.b.get_status(tid) == states.PENDING
 
-        self.b.store_result(tid, state="Progress", result={"progress": 10})
-        assert self.b.get_status(tid) == "Progress"
-        assert self.b.get_result(tid) == {"progress": 10}
+        self.b.store_result(tid, state='Progress', result={'progress': 10})
+        assert self.b.get_status(tid) == 'Progress'
+        assert self.b.get_result(tid) == {'progress': 10}
 
         self.b.mark_as_done(tid, 42)
         assert self.b.get_status(tid) == states.SUCCESS
@@ -970,29 +990,30 @@ class test_DatabaseBackend:
 
 
 class DjangoCeleryResultRouter:
-    route_app_labels = {"django_celery_results"}
+    route_app_labels = {'django_celery_results'}
 
     def db_for_read(self, model, **hints):
         """Route read access to the read-only database"""
         if model._meta.app_label in self.route_app_labels:
-            return "read-only"
+            return 'read-only'
         return None
 
     def db_for_write(self, model, **hints):
         """Route write access to the default database"""
         if model._meta.app_label in self.route_app_labels:
-            return "default"
+            return 'default'
         return None
 
 
 class ChordPartReturnTestCase(TransactionTestCase):
-    databases = {"default", "read-only"}
+    databases = {'default', 'read-only'}
 
     def setUp(self):
         super().setUp()
         self.app.conf.result_serializer = 'json'
         self.app.conf.result_backend = (
-            'django_celery_results.backends:DatabaseBackend')
+            'django_celery_results.backends:DatabaseBackend'
+        )
         self.app.conf.result_extended = True
         self.b = DatabaseBackend(app=self.app)
 
@@ -1009,15 +1030,15 @@ class ChordPartReturnTestCase(TransactionTestCase):
             group = GroupResult(id=gid, results=subtasks)
 
             assert ChordCounter.objects.count() == 0
-            assert ChordCounter.objects.using("read-only").count() == 0
-            assert ChordCounter.objects.using("default").count() == 0
+            assert ChordCounter.objects.using('read-only').count() == 0
+            assert ChordCounter.objects.using('default').count() == 0
 
             self.b.apply_chord(group, self.add.s())
 
             # Check if the ChordCounter was created in the correct database
             assert ChordCounter.objects.count() == 1
-            assert ChordCounter.objects.using("read-only").count() == 1
-            assert ChordCounter.objects.using("default").count() == 1
+            assert ChordCounter.objects.using('read-only').count() == 1
+            assert ChordCounter.objects.using('default').count() == 1
 
             chord_counter = ChordCounter.objects.get(group_id=gid)
             assert chord_counter.count == 2
@@ -1025,15 +1046,15 @@ class ChordPartReturnTestCase(TransactionTestCase):
             request = mock.MagicMock()
             request.id = subtasks[0].id
             request.group = gid
-            request.task = "my_task"
-            request.args = ["a", 1, "password"]
-            request.kwargs = {"c": 3, "d": "e", "password": "password"}
-            request.argsrepr = "argsrepr"
-            request.kwargsrepr = "kwargsrepr"
-            request.hostname = "celery@ip-0-0-0-0"
-            request.periodic_task_name = "my_periodic_task"
+            request.task = 'my_task'
+            request.args = ['a', 1, 'password']
+            request.kwargs = {'c': 3, 'd': 'e', 'password': 'password'}
+            request.argsrepr = 'argsrepr'
+            request.kwargsrepr = 'kwargsrepr'
+            request.hostname = 'celery@ip-0-0-0-0'
+            request.periodic_task_name = 'my_periodic_task'
             request.ignore_result = False
-            result = {"foo": "baz"}
+            result = {'foo': 'baz'}
 
             self.b.mark_as_done(tid1, result, request=request)
 

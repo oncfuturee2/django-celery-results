@@ -23,45 +23,75 @@ class TaskResultAdmin(admin.ModelAdmin):
 
     model = TaskResult
     date_hierarchy = 'date_done'
-    list_display = ('task_id', 'periodic_task_name', 'task_name', 'date_done',
-                    'status', 'worker')
-    list_filter = ('status', 'date_done', 'periodic_task_name', 'task_name',
-                   'worker')
-    readonly_fields = ('date_created', 'date_started', 'date_done',
-                       'result', 'meta')
-    search_fields = ('task_name', 'task_id', 'status', 'task_args',
-                     'task_kwargs')
+    list_display = (
+        'task_id',
+        'periodic_task_name',
+        'task_name',
+        'date_done',
+        'status',
+        'worker',
+    )
+    list_filter = (
+        'status',
+        'date_done',
+        'periodic_task_name',
+        'task_name',
+        'worker',
+    )
+    readonly_fields = (
+        'date_created',
+        'date_started',
+        'date_done',
+        'result',
+        'meta',
+    )
+    search_fields = (
+        'task_name',
+        'task_id',
+        'status',
+        'task_args',
+        'task_kwargs',
+    )
     fieldsets = (
-        (None, {
-            'fields': (
-                'task_id',
-                'task_name',
-                'periodic_task_name',
-                'status',
-                'worker',
-                'content_type',
-                'content_encoding',
-            ),
-            'classes': ('extrapretty', 'wide')
-        }),
-        (_('Parameters'), {
-            'fields': (
-                'task_args',
-                'task_kwargs',
-            ),
-            'classes': ('extrapretty', 'wide')
-        }),
-        (_('Result'), {
-            'fields': (
-                'result',
-                'date_created',
-                'date_started',
-                'date_done',
-                'traceback',
-                'meta',
-            ),
-            'classes': ('extrapretty', 'wide')
-        }),
+        (
+            None,
+            {
+                'fields': (
+                    'task_id',
+                    'task_name',
+                    'periodic_task_name',
+                    'status',
+                    'worker',
+                    'content_type',
+                    'content_encoding',
+                ),
+                'classes': ('extrapretty', 'wide'),
+            },
+        ),
+        (
+            _('Parameters'),
+            {
+                'fields': (
+                    'task_args',
+                    'task_kwargs',
+                ),
+                'classes': ('extrapretty', 'wide'),
+            },
+        ),
+        (
+            _('Result'),
+            {
+                'fields': (
+                    'result',
+                    'date_created',
+                    'date_started',
+                    'date_done',
+                    'traceback',
+                    'meta',
+                ),
+                'classes': ('extrapretty', 'wide'),
+            },
+        ),
     )
     actions = ['terminate_task']
 
@@ -69,9 +99,7 @@ class TaskResultAdmin(admin.ModelAdmin):
         if ALLOW_EDITS:
             return self.readonly_fields
         else:
-            return list({
-                field.name for field in self.model._meta.fields
-            })
+            return list({field.name for field in self.model._meta.fields})
 
     def terminate_task(self, request, queryset):
         """Terminate selected tasks."""
@@ -80,23 +108,23 @@ class TaskResultAdmin(admin.ModelAdmin):
             celery_app.control.terminate(task_ids)
             self.message_user(
                 request,
-                f"{len(task_ids)} task(s) was terminated successfully.",
+                f'{len(task_ids)} task(s) was terminated successfully.',
                 messages.SUCCESS,
             )
         except Exception as e:
             logger.error(
-                "Error while terminating tasks: %s",
+                'Error while terminating tasks: %s',
                 e,
                 exc_info=True,
-                extra={'task_ids': task_ids}
+                extra={'task_ids': task_ids},
             )
             self.message_user(
                 request,
-                f"Error while terminating tasks: {e}",
+                f'Error while terminating tasks: {e}',
                 messages.ERROR,
             )
 
-    terminate_task.short_description = _("Terminate selected tasks")
+    terminate_task.short_description = _('Terminate selected tasks')
 
 
 admin.site.register(TaskResult, TaskResultAdmin)

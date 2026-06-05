@@ -17,15 +17,13 @@ def pytest_runtest_setup(item):
     """
     run_benchmarks = item.config.getoption('--run-benchmarks')
 
-    is_benchmark = any(item.iter_markers(name="benchmark"))
+    is_benchmark = any(item.iter_markers(name='benchmark'))
 
     if is_benchmark:
         if run_benchmarks:
             return
 
-        pytest.skip(
-            'need --run-benchmarks to run benchmarks'
-        )
+        pytest.skip('need --run-benchmarks to run benchmarks')
 
 
 def pytest_collection_modifyitems(items):
@@ -34,5 +32,5 @@ def pytest_collection_modifyitems(items):
     """
     for item in items:
         test_class_name = item.cls.__name__
-        if test_class_name.startswith("benchmark_"):
+        if test_class_name.startswith('benchmark_'):
             item.add_marker(pytest.mark.benchmark)

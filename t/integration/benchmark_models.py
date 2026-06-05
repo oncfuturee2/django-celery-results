@@ -4,7 +4,6 @@ from datetime import timedelta
 import pytest
 from celery import uuid
 from django.test import TransactionTestCase
-
 from django_celery_results.models import TaskResult
 from django_celery_results.utils import now
 
@@ -15,19 +14,20 @@ RECORDS_COUNT = 100000
 def use_benchmark(request, benchmark):
     def wrapped(a=10, b=5):
         return a + b
+
     request.cls.benchmark = benchmark
 
 
 @pytest.mark.usefixtures('use_benchmark')
 @pytest.mark.usefixtures('depends_on_current_app')
 class benchmark_Models(TransactionTestCase):
-
     @pytest.fixture(autouse=True)
     def setup_app(self, app):
         self.app = app
         self.app.conf.result_serializer = 'pickle'
         self.app.conf.result_backend = (
-            'django_celery_results.backends:DatabaseBackend')
+            'django_celery_results.backends:DatabaseBackend'
+        )
 
     def create_many_task_result(self, count):
         start = time.time()
@@ -36,11 +36,13 @@ class benchmark_Models(TransactionTestCase):
         results = TaskResult.objects.bulk_create(draft_results)
         done_creating = time.time()
 
-        print((
-            'drafting time: {drafting:.2f}\n'
-            'bulk_create time: {done:.2f}\n'
-            '------'
-        ).format(drafting=drafted - start, done=done_creating - drafted))
+        print(
+            (
+                'drafting time: {drafting:.2f}\n'
+                'bulk_create time: {done:.2f}\n'
+                '------'
+            ).format(drafting=drafted - start, done=done_creating - drafted)
+        )
         return results
 
     def setup_records_to_delete(self):
@@ -62,9 +64,9 @@ class benchmark_Models(TransactionTestCase):
         done = time.time()
         assert TaskResult.objects.count() == int(RECORDS_COUNT / 2)
 
-        print((
-            '------'
-            'setup time: {setup:.2f}\n'
-            'bench time: {bench:.2f}\n'
-        ).format(setup=after_setup - start, bench=done - after_setup))
+        print(
+            (
+                '------setup time: {setup:.2f}\nbench time: {bench:.2f}\n'
+            ).format(setup=after_setup - start, bench=done - after_setup)
+        )
         assert self.benchmark.stats.stats.max < 5

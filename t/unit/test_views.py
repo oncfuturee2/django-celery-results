@@ -6,7 +6,6 @@ from celery.result import AsyncResult
 from celery.result import GroupResult as CeleryGroupResult
 from django.test import TestCase
 from django.test.client import RequestFactory
-
 from django_celery_results.models import GroupResult, TaskResult
 from django_celery_results.views import (
     group_status,
@@ -47,7 +46,7 @@ class test_Views(TestCase):
             'utf-8',
             taskmeta.task_id,
             json.dumps({'result': True}),
-            status=states.SUCCESS
+            status=states.SUCCESS,
         )
 
         request = self.factory.get(f'/done/{taskmeta.task_id}')
@@ -69,7 +68,7 @@ class test_Views(TestCase):
             'utf-8',
             taskmeta.task_id,
             json.dumps({'result': True}),
-            status=states.SUCCESS
+            status=states.SUCCESS,
         )
 
         request = self.factory.get(f'/status/{taskmeta.task_id}')
@@ -109,5 +108,5 @@ class test_Views(TestCase):
         assert response
 
         result = json.loads(response.content.decode('utf-8'))
-        assert len(result["group"]["results"]) == 1
-        assert result["group"]["results"][0]["status"] == states.SUCCESS
+        assert len(result['group']['results']) == 1
+        assert result['group']['results'][0]['status'] == states.SUCCESS

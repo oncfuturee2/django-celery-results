@@ -6,7 +6,6 @@ from celery import states, uuid
 from django.db import transaction
 from django.db.utils import InterfaceError
 from django.test import TransactionTestCase
-
 from django_celery_results.backends import DatabaseBackend
 from django_celery_results.models import GroupResult, TaskResult
 from django_celery_results.utils import now
@@ -21,7 +20,8 @@ class test_Models(TransactionTestCase):
         self.app = app
         self.app.conf.result_serializer = 'pickle'
         self.app.conf.result_backend = (
-            'django_celery_results.backends:DatabaseBackend')
+            'django_celery_results.backends:DatabaseBackend'
+        )
 
     def create_task_result(self):
         id = uuid()
@@ -41,16 +41,18 @@ class test_Models(TransactionTestCase):
         assert task.task_id == m1.task_id
         assert task.status != states.SUCCESS
         TaskResult.objects.store_result(
-            ctype, cenc, m1.task_id, True, status=states.SUCCESS)
+            ctype, cenc, m1.task_id, True, status=states.SUCCESS
+        )
         TaskResult.objects.store_result(
-            ctype, cenc, m2.task_id, True, status=states.SUCCESS)
+            ctype, cenc, m2.task_id, True, status=states.SUCCESS
+        )
         assert TaskResult.objects.get_task(m1.task_id).status == states.SUCCESS
         assert TaskResult.objects.get_task(m2.task_id).status == states.SUCCESS
 
         # Have to avoid save() because it applies the auto_now=True.
-        TaskResult.objects.filter(
-            task_id=m1.task_id
-        ).update(date_done=now() - timedelta(days=10))
+        TaskResult.objects.filter(task_id=m1.task_id).update(
+            date_done=now() - timedelta(days=10)
+        )
 
         expired = TaskResult.objects.get_all_expired(
             self.app.conf.result_expires,
@@ -74,21 +76,28 @@ class test_Models(TransactionTestCase):
         running transaction has not been committed, but we still want to
         allow clients to receive updates.
         """
+
         class TransactionError(Exception):
             pass
 
         m1 = self.create_task_result()
         m2 = self.create_task_result()
         assert set(TaskResult.objects.all()) == set(
-            TaskResult.objects.using("secondary").all()
+            TaskResult.objects.using('secondary').all()
         )
         try:
             with transaction.atomic():
                 TaskResult.objects.store_result(
-                    ctype, cenc, m1.task_id, True, status=states.SUCCESS)
+                    ctype, cenc, m1.task_id, True, status=states.SUCCESS
+                )
                 TaskResult.objects.store_result(
-                    ctype, cenc, m2.task_id, True, status=states.SUCCESS,
-                    using='secondary')
+                    ctype,
+                    cenc,
+                    m2.task_id,
+                    True,
+                    status=states.SUCCESS,
+                    using='secondary',
+                )
                 raise TransactionError()
         except TransactionError:
             pass
@@ -115,21 +124,17 @@ class test_Models(TransactionTestCase):
         with patch.object(
             backend,
             '_store_result',
-            side_effect=[
-                InterfaceError('Connection closed')
-            ]
+            side_effect=[InterfaceError('Connection closed')],
         ) as patched_store_result:
             with patch.object(
                 backend,
                 'exception_safe_to_retry',
-                return_value=backend.exception_safe_to_retry
+                return_value=backend.exception_safe_to_retry,
             ) as patched_safe_to_retry:
                 # InterfaceError should be re-raised
                 with pytest.raises(InterfaceError):
                     backend.store_result(
-                        m.task_id,
-                        result=states.SUCCESS,
-                        state=states.SUCCESS
+                        m.task_id, result=states.SUCCESS, state=states.SUCCESS
                     )
                 assert patched_safe_to_retry.call_count == 0
                 assert patched_store_result.call_count == 1
@@ -161,21 +166,19 @@ class test_Models(TransactionTestCase):
             '_store_result',
             side_effect=[
                 InterfaceError('Connection closed'),
-                backend._store_result
-            ]
+                backend._store_result,
+            ],
         ) as patched_store_result:
             with patch.object(
                 backend,
                 'exception_safe_to_retry',
-                return_value=backend.exception_safe_to_retry
+                return_value=backend.exception_safe_to_retry,
             ) as patched_safe_to_retry:
                 # InterfaceError should be hidden
                 # And new connection opened
                 # Then unpatched function called for retry
                 backend.store_result(
-                    m.task_id,
-                    result=states.SUCCESS,
-                    state=states.SUCCESS
+                    m.task_id, result=states.SUCCESS, state=states.SUCCESS
                 )
                 assert patched_safe_to_retry.call_count == 1
                 assert patched_store_result.call_count == 2
@@ -196,16 +199,17 @@ class test_Models(TransactionTestCase):
         m1 = self.create_group_result()
         m2 = self.create_group_result()
         assert set(GroupResult.objects.all()) == set(
-            GroupResult.objects.using("secondary").all()
+            GroupResult.objects.using('secondary').all()
         )
 
         try:
             with transaction.atomic():
                 GroupResult.objects.store_group_result(
-                    ctype, cenc, m1.group_id, True)
+                    ctype, cenc, m1.group_id, True
+                )
                 GroupResult.objects.store_group_result(
-                    ctype, cenc, m2.group_id, True,
-                    using='secondary')
+                    ctype, cenc, m2.group_id, True, using='secondary'
+                )
                 raise TransactionError()
         except TransactionError:
             pass
@@ -248,9 +252,9 @@ class test_ModelsWithoutDefaultDB(TransactionTestCase):
     databases = [non_default_test_db]
 
     def test_operations_with_atomic_transactions(self):
-        TaskResult.objects.db_manager(
-            self.non_default_test_db
-        ).delete_expired(expires=10)
+        TaskResult.objects.db_manager(self.non_default_test_db).delete_expired(
+            expires=10
+        )
         GroupResult.objects.db_manager(
             self.non_default_test_db
         ).delete_expired(expires=10)

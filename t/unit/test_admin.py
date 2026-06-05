@@ -15,14 +15,12 @@ from django.urls import (
     path,
     reverse,
 )
-
 from django_celery_results.admin import TaskResultAdmin
 from django_celery_results.models import TaskResult
 
 
 @pytest.mark.usefixtures('depends_on_current_app')
 class test_Admin(TestCase):
-
     def setUp(self):
         self.task_admin = TaskResultAdmin(model=TaskResult, admin_site=None)
         self.factory = RequestFactory()
@@ -64,8 +62,8 @@ class test_Admin(TestCase):
         messages = list(get_messages(request))
         self.assertEqual(len(messages), 1)
         self.assertEqual(
-            str(messages[0]),
-            "2 task(s) was terminated successfully.")
+            str(messages[0]), '2 task(s) was terminated successfully.'
+        )
         self.assertEqual(messages[0].level, constants.SUCCESS)
 
     @patch('django_celery_results.admin.celery_app.control.terminate')
@@ -84,7 +82,7 @@ class test_Admin(TestCase):
         queryset = TaskResult.objects.filter(task_id__in=task_id_list)
 
         # Simulate an exception in terminate
-        mock_terminate.side_effect = Exception("Termination failed")
+        mock_terminate.side_effect = Exception('Termination failed')
 
         # Call the terminate_task method
         self.task_admin.terminate_task(request, queryset)
@@ -98,8 +96,9 @@ class test_Admin(TestCase):
         messages = list(get_messages(request))
         self.assertEqual(len(messages), 1)
         self.assertIn(
-            "Error while terminating tasks: Termination failed",
-            str(messages[0]))
+            'Error while terminating tasks: Termination failed',
+            str(messages[0]),
+        )
         self.assertEqual(messages[0].level, constants.ERROR)
 
 
@@ -107,28 +106,28 @@ User = get_user_model()
 
 
 class TaskResultAdminTests(TestCase):
-    app_name = "django_celery_results"
+    app_name = 'django_celery_results'
     model = TaskResult
 
     def setUp(self):
         self.admin_user = User.objects.create_superuser(
-            username="admin", email="admin@test.com", password="password"
+            username='admin', email='admin@test.com', password='password'
         )
-        self.client.login(username="admin", password="password")
+        self.client.login(username='admin', password='password')
         self.task_result = TaskResult.objects.create(
-            task_id=uuid(), task_name="test_task"
+            task_id=uuid(), task_name='test_task'
         )
 
     def test_add_view(self):
         url = reverse(
-            f"admin:{self.app_name}_{self.model._meta.model_name}_add"
+            f'admin:{self.app_name}_{self.model._meta.model_name}_add'
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
     def test_change_view(self):
         url = reverse(
-            f"admin:{self.app_name}_{self.model._meta.model_name}_change",
+            f'admin:{self.app_name}_{self.model._meta.model_name}_change',
             args=[self.task_result.id],
         )
         response = self.client.get(url)
@@ -143,7 +142,7 @@ class TaskResultProxyAdminTests(TaskResultAdminTests):
         class TaskResultProxy(TaskResult):
             class Meta:
                 proxy = True
-                app_label = "django_celery_results"
+                app_label = 'django_celery_results'
 
         cls.model = TaskResultProxy
         admin.site.register(TaskResultProxy, TaskResultAdmin)
@@ -152,7 +151,7 @@ class TaskResultProxyAdminTests(TaskResultAdminTests):
         # Otherwise, it cannot be resolved
         default_resolver = get_resolver()
         cls.ori_url_patterns_0 = default_resolver.url_patterns[0]
-        get_resolver().url_patterns[0] = path("admin/", admin.site.urls)
+        get_resolver().url_patterns[0] = path('admin/', admin.site.urls)
         clear_url_caches()
 
     @classmethod

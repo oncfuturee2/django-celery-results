@@ -1,0 +1,34 @@
+line-length = 79
+target-version = "py38"
+src = ["django_celery_results", "t"]
+extend-exclude = [
+    "django_celery_results/migrations",
+]
+
+[lint]
+select = ["D", "E", "F", "I", "RUF100", "W"]
+ignore = [
+    "D100",
+    "D102",
+    "D104",
+    "D105",
+    "D107",
+    "D203",
+    "D205",
+    "D212",
+    "D213",
+    "D403",
+    "D415",
+    "D417",
+]
+
+[lint.per-file-ignores]
+"t/**/*.py" = ["D"]
+"conftest.py" = ["D"]
+"setup.py" = ["D"]
+
+[lint.pydocstyle]
+convention = "google"
+
+[format]
+quote-style = "single"

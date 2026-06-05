@@ -12,14 +12,14 @@ from django.db.models.functions import Now
 from django.db.utils import InterfaceError
 from kombu.exceptions import DecodeError
 
-from ..models import ChordCounter
+from ..models import ChordCounter, TaskResult
 from ..models import GroupResult as GroupResultModel
-from ..models import TaskResult
 
 EXCEPTIONS_TO_CATCH = (InterfaceError,)
 
 try:
     from psycopg2 import InterfaceError as Psycopg2InterfaceError
+
     EXCEPTIONS_TO_CATCH += (Psycopg2InterfaceError,)
 except ImportError:
     pass
@@ -65,7 +65,6 @@ class DatabaseBackend(BaseDictBackend):
             'worker': None,
         }
         if request and self.app.conf.find_value_for_key('extended', 'result'):
-
             if getattr(request, 'argsrepr', None) is not None:
                 # task protocol 2
                 task_args = request.argsrepr
@@ -89,14 +88,16 @@ class DatabaseBackend(BaseDictBackend):
 
             periodic_task_name = getattr(request, 'periodic_task_name', None)
 
-            extended_props.update({
-                'periodic_task_name': periodic_task_name,
-                'task_args': task_args,
-                'task_kwargs': task_kwargs,
-                'task_name': getattr(request, 'task', None),
-                'traceback': traceback,
-                'worker': getattr(request, 'hostname', None),
-            })
+            extended_props.update(
+                {
+                    'periodic_task_name': periodic_task_name,
+                    'task_args': task_args,
+                    'task_kwargs': task_kwargs,
+                    'task_name': getattr(request, 'task', None),
+                    'traceback': traceback,
+                    'worker': getattr(request, 'hostname', None),
+                }
+            )
 
         return extended_props
 
@@ -107,24 +108,18 @@ class DatabaseBackend(BaseDictBackend):
         With this, is possible to assign arbitrary data in request.meta to be
         retrieve and stored on the TaskResult.
         """
-        request = request or getattr(get_current_task(), "request", None)
-        return getattr(request, "meta", {})
+        request = request or getattr(get_current_task(), 'request', None)
+        return getattr(request, 'meta', {})
 
     def _store_result(
-            self,
-            task_id,
-            result,
-            status,
-            traceback=None,
-            request=None,
-            using=None
+        self, task_id, result, status, traceback=None, request=None, using=None
     ):
         """Store return value and status of an executed task."""
         content_type, content_encoding, result = self.encode_content(result)
 
         meta = {
             **self._get_meta_from_request(request),
-            "children": self.current_task_children(request),
+            'children': self.current_task_children(request),
         }
         _, _, encoded_meta = self.encode_content(
             meta,
@@ -141,9 +136,7 @@ class DatabaseBackend(BaseDictBackend):
             'using': using,
         }
 
-        task_props.update(
-            self._get_extended_properties(request, traceback)
-        )
+        task_props.update(self._get_extended_properties(request, traceback))
 
         if status == states.STARTED:
             task_props['date_started'] = Now()
@@ -209,10 +202,10 @@ class DatabaseBackend(BaseDictBackend):
 
         if group_result:
             res = group_result.as_dict()
-            decoded_result = self.decode_content(group_result, res["result"])
-            res["result"] = None
+            decoded_result = self.decode_content(group_result, res['result'])
+            res['result'] = None
             if decoded_result:
-                res["result"] = result_from_tuple(decoded_result, app=self.app)
+                res['result'] = result_from_tuple(decoded_result, app=self.app)
             return res
 
     def _save_group(self, group_id, group_result):
@@ -240,7 +233,7 @@ class DatabaseBackend(BaseDictBackend):
             # celery <5.1 will pass a GroupResult object
             header_result = header_result_args
         results = [r.as_tuple() for r in header_result]
-        chord_size = body.get("chord_size", None) or len(results)
+        chord_size = body.get('chord_size', None) or len(results)
         data = json.dumps(results)
         ChordCounter.objects.create(
             group_id=header_result.id, sub_tasks=data, count=chord_size
@@ -258,16 +251,15 @@ class DatabaseBackend(BaseDictBackend):
             # with a `select_for_update` lock to prevent race conditions.
             # SELECT FOR UPDATE is not supported on all databases
             try:
-                chord_counter = (
-                    ChordCounter.objects.select_for_update()
-                    .get(group_id=gid)
+                chord_counter = ChordCounter.objects.select_for_update().get(
+                    group_id=gid
                 )
             except ChordCounter.DoesNotExist:
                 logger.warning("Can't find ChordCounter for Group %s", gid)
                 return
             chord_counter.count -= 1
             if chord_counter.count != 0:
-                chord_counter.save(update_fields=["count"])
+                chord_counter.save(update_fields=['count'])
             else:
                 # Last task in the chord header has finished
                 call_callback = True
@@ -278,9 +270,7 @@ class DatabaseBackend(BaseDictBackend):
             if deps.ready():
                 callback = maybe_signature(request.chord, app=self.app)
                 trigger_callback(
-                    app=self.app,
-                    callback=callback,
-                    group_result=deps
+                    app=self.app, callback=callback, group_result=deps
                 )
 
 
@@ -299,16 +289,16 @@ def trigger_callback(app, callback, group_result):
     except Exception as exc:  # pylint: disable=broad-except
         try:
             culprit = next(group_result._failed_join_report())
-            reason = f"Dependency {culprit.id} raised {exc!r}"
+            reason = f'Dependency {culprit.id} raised {exc!r}'
         except StopIteration:
             reason = repr(exc)
-        logger.exception("Chord %r raised: %r", group_result.id, exc)
+        logger.exception('Chord %r raised: %r', group_result.id, exc)
         app.backend.chord_error_from_stack(callback, ChordError(reason))
     else:
         try:
             callback.delay(ret)
         except Exception as exc:  # pylint: disable=broad-except
-            logger.exception("Chord %r raised: %r", group_result.id, exc)
+            logger.exception('Chord %r raised: %r', group_result.id, exc)
             app.backend.chord_error_from_stack(
-                callback, exc=ChordError(f"Callback error: {exc!r}")
+                callback, exc=ChordError(f'Callback error: {exc!r}')
             )

@@ -2,7 +2,6 @@ import os
 
 from django.core.management import call_command
 from django.test import TestCase, override_settings
-
 from django_celery_results import migrations as result_migrations
 
 
@@ -16,8 +15,10 @@ class MigrationTests(TestCase):
         path = os.path.dirname(result_migrations.__file__)
         files = [f[:4] for f in os.listdir(path) if f.endswith('.py')]
         self.assertEqual(
-            len(files), len(set(files)),
-            msg='Detected migration files with the same migration number')
+            len(files),
+            len(set(files)),
+            msg='Detected migration files with the same migration number',
+        )
 
     def test_models_match_migrations(self):
         """Make sure that no pending migrations exist for the app.
@@ -26,7 +27,7 @@ class MigrationTests(TestCase):
         a migration, and if so we fail.
         """
         call_command(
-            "makemigrations", "django_celery_results", "--check", "--dry-run"
+            'makemigrations', 'django_celery_results', '--check', '--dry-run'
         )
 
     @override_settings(DEFAULT_AUTO_FIELD='django.db.models.BigAutoField')

@@ -10,10 +10,13 @@ import setuptools.command.test
 
 try:
     import platform
+
     _pyimp = platform.python_implementation
 except (AttributeError, ImportError):
+
     def _pyimp():
         return 'Python'
+
 
 NAME = 'django_celery_results'
 
@@ -65,15 +68,14 @@ re_doc = re.compile(r'^"""(.+?)"""')
 
 def add_default(m):
     attr_name, attr_value = m.groups()
-    return ((attr_name, attr_value.strip("\"'")),)
+    return ((attr_name, attr_value.strip('"\'')),)
 
 
 def add_doc(m):
     return (('doc', m.groups()[0]),)
 
 
-pats = {re_meta: add_default,
-        re_doc: add_doc}
+pats = {re_meta: add_default, re_doc: add_doc}
 here = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(here, NAME, '__init__.py')) as meta_fh:
     meta = {}
@@ -111,6 +113,7 @@ def _reqs(*f):
 def reqs(*f):
     return [req for subreq in _reqs(*f) for req in subreq]
 
+
 # -*- Long Description -*-
 
 
@@ -131,6 +134,7 @@ class pytest(setuptools.command.test.test):
 
     def run_tests(self):
         import pytest
+
         sys.exit(pytest.main(self.pytest_args))
 
 

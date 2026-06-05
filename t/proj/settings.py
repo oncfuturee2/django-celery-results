@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(BASE_DIR, os.pardir)))
 # otherwise even makemigrations won't run.
 try:
     from psycopg2cffi import compat
+
     compat.register()
     DATABASES = {
         'default': {
@@ -74,22 +75,22 @@ except ImportError:
             'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
             'OPTIONS': {
                 'timeout': 1000,
-            }
+            },
         },
         'secondary': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
             'OPTIONS': {
                 'timeout': 1000,
-            }
+            },
         },
         'read-only': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
             'OPTIONS': {
                 'timeout': 1000,
-            }
-        }
+            },
+        },
     }
 
 # Quick-start development settings - unsuitable for production
@@ -158,8 +159,7 @@ CACHES = {
 
 django_auth = 'django.contrib.auth.password_validation.'
 
-AUTH_PASSWORD_VALIDATORS = [
-]
+AUTH_PASSWORD_VALIDATORS = []
 
 
 # Internationalization
