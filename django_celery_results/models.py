@@ -132,6 +132,12 @@ class TaskResult(models.Model):
             'worker': self.worker
         }
 
+    @property
+    def duration(self):
+        if self.date_started and self.date_done:
+            return (self.date_done - self.date_started).total_seconds()
+        return None
+
     def __str__(self):
         return '<Task: {0.task_id} ({0.status})>'.format(self)
 

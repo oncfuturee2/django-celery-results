@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -18,6 +19,7 @@ from django.urls import (
 
 from django_celery_results.admin import TaskResultAdmin
 from django_celery_results.models import TaskResult
+from django_celery_results.utils import now
 
 
 @pytest.mark.usefixtures('depends_on_current_app')
@@ -101,6 +103,43 @@ class test_Admin(TestCase):
             "Error while terminating tasks: Termination failed",
             str(messages[0]))
         self.assertEqual(messages[0].level, constants.ERROR)
+
+    def test_list_display_includes_duration(self):
+        self.assertIn('duration', self.task_admin.list_display)
+
+    def test_readonly_fields_includes_duration(self):
+        self.assertIn('duration', self.task_admin.readonly_fields)
+
+    def test_duration_admin_method(self):
+        tr = self.create_task_result()
+        started = now() - timedelta(seconds=30)
+        done = now()
+        TaskResult.objects.filter(task_id=tr.task_id).update(
+            date_started=started, date_done=done
+        )
+        tr.refresh_from_db()
+        result = self.task_admin.duration(tr)
+        self.assertIsNotNone(result)
+        self.assertAlmostEqual(result, 30, delta=1)
+
+    def test_duration_admin_method_returns_none(self):
+        tr = self.create_task_result()
+        result = self.task_admin.duration(tr)
+        self.assertIsNone(result)
+
+    def test_change_view_contains_duration_field(self):
+        self.admin_user = User.objects.create_superuser(
+            username="admin", email="admin@test.com", password="password"
+        )
+        self.client.login(username="admin", password="password")
+        tr = self.create_task_result()
+        url = reverse(
+            "admin:django_celery_results_taskresult_change",
+            args=[tr.id],
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Duration (seconds)')
 
 
 User = get_user_model()

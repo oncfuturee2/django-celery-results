@@ -226,6 +226,49 @@ class test_Models(TransactionTestCase):
         # All expired records should be gone
         assert TaskResult.objects.get_all_expired(0).count() == 0
 
+    def test_duration_with_both_dates(self):
+        m = self.create_task_result()
+        started = now() - timedelta(seconds=30)
+        done = now()
+        TaskResult.objects.filter(task_id=m.task_id).update(
+            date_started=started, date_done=done
+        )
+        m.refresh_from_db()
+        assert m.duration is not None
+        assert 29.0 <= m.duration <= 31.0
+
+    def test_duration_exact_calculation(self):
+        m = self.create_task_result()
+        started = now() - timedelta(seconds=120)
+        done = now()
+        TaskResult.objects.filter(task_id=m.task_id).update(
+            date_started=started, date_done=done
+        )
+        m.refresh_from_db()
+        assert m.duration is not None
+        assert 119.0 <= m.duration <= 121.0
+
+    def test_duration_without_date_started(self):
+        m = self.create_task_result()
+        assert m.date_started is None
+        assert m.duration is None
+
+    def test_duration_with_both_dates_none(self):
+        m = self.create_task_result()
+        assert m.date_started is None
+        assert m.date_done is not None
+        assert m.duration is None
+
+    def test_duration_returns_float(self):
+        m = self.create_task_result()
+        started = now() - timedelta(seconds=45, microseconds=500000)
+        done = now()
+        TaskResult.objects.filter(task_id=m.task_id).update(
+            date_started=started, date_done=done
+        )
+        m.refresh_from_db()
+        assert isinstance(m.duration, float)
+
 
 @pytest.mark.usefixtures('depends_on_current_app')
 class test_ModelsWithoutDefaultDB(TransactionTestCase):

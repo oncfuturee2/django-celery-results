@@ -24,11 +24,11 @@ class TaskResultAdmin(admin.ModelAdmin):
     model = TaskResult
     date_hierarchy = 'date_done'
     list_display = ('task_id', 'periodic_task_name', 'task_name', 'date_done',
-                    'status', 'worker')
+                    'status', 'worker', 'duration')
     list_filter = ('status', 'date_done', 'periodic_task_name', 'task_name',
                    'worker')
     readonly_fields = ('date_created', 'date_started', 'date_done',
-                       'result', 'meta')
+                       'result', 'meta', 'duration')
     search_fields = ('task_name', 'task_id', 'status', 'task_args',
                      'task_kwargs')
     fieldsets = (
@@ -71,7 +71,39 @@ class TaskResultAdmin(admin.ModelAdmin):
         else:
             return list({
                 field.name for field in self.model._meta.fields
-            })
+            }) + ['duration']
+
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        if 'fields' in kwargs:
+            kwargs['fields'] = tuple(
+                f for f in kwargs['fields'] if f != 'duration'
+            )
+        return super().get_form(request, obj, change, **kwargs)
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        result_fieldset = None
+        for name, options in fieldsets:
+            if name == _('Result'):
+                result_fieldset = (name, dict(options))
+                break
+        if result_fieldset is not None:
+            fields = list(result_fieldset[1]['fields'])
+            try:
+                idx = fields.index('date_done')
+                fields.insert(idx + 1, 'duration')
+            except ValueError:
+                fields.append('duration')
+            result_fieldset[1]['fields'] = tuple(fields)
+            fieldsets = tuple(
+                (name, result_fieldset[1] if name == _('Result') else options)
+                for name, options in fieldsets
+            )
+        return fieldsets
+
+    @admin.display(description=_('Duration (seconds)'))
+    def duration(self, obj):
+        return obj.duration
 
     def terminate_task(self, request, queryset):
         """Terminate selected tasks."""
