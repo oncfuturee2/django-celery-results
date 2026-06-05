@@ -585,7 +585,6 @@ class test_DatabaseBackend:
 
     def xxx_backend(self):
         tid = uuid()
-
         assert self.b.get_status(tid) == states.PENDING
         assert self.b.get_result(tid) is None
 
@@ -609,7 +608,6 @@ class test_DatabaseBackend:
         assert x.result.get('foo') == 'bar'
         x.forget()
         if celery.VERSION[0:3] == (3, 1, 10):
-            # bug in 3.1.10 means result did not clear cache after forget.
             x._cache = None
         assert x.result is None
 
@@ -632,20 +630,17 @@ class test_DatabaseBackend:
         self.b.mark_as_done(tid, result, request=request)
         mindb = self.b.get_task_meta(tid)
 
-        # check task meta
         assert mindb.get('result') == {'foo': 'baz'}
         assert mindb.get('task_args') == 'argsrepr'
         assert mindb.get('task_kwargs') == 'kwargsrepr'
         assert len(mindb.get('worker')) > 1
 
-        # check task_result object
         tr = TaskResult.objects.get(task_id=tid)
         task_args = pickle.loads(b64decode(tr.task_args))
         task_kwargs = pickle.loads(b64decode(tr.task_kwargs))
         assert task_args == 'argsrepr'
         assert task_kwargs == 'kwargsrepr'
 
-        # check async_result
         ar = AsyncResult(tid)
         assert ar.args == mindb.get('task_args')
         assert ar.kwargs == mindb.get('task_kwargs')
@@ -669,17 +664,14 @@ class test_DatabaseBackend:
         self.b.mark_as_done(tid, result, request=request)
         mindb = self.b.get_task_meta(tid)
 
-        # check task meta
         assert mindb.get('result') == {'foo': 'baz'}
         assert mindb.get('task_args') == 'argsrepr'
         assert mindb.get('task_kwargs') == 'kwargsrepr'
 
-        # check task_result object
         tr = TaskResult.objects.get(task_id=tid)
         assert json.loads(tr.task_args) == 'argsrepr'
         assert json.loads(tr.task_kwargs) == 'kwargsrepr'
 
-        # check async_result
         ar = AsyncResult(tid)
         assert ar.args == mindb.get('task_args')
         assert ar.kwargs == mindb.get('task_kwargs')
@@ -756,20 +748,15 @@ class test_DatabaseBackend:
         assert json.loads(tr.task_kwargs) == {'c': 6, 'd': 'e', 'f': False}
 
     def test_apply_chord_header_result_arg(self):
-        """Test if apply_chord can handle Celery <= 5.1 call signature"""
         gid = uuid()
         tid1 = uuid()
         tid2 = uuid()
         subtasks = [AsyncResult(tid1), AsyncResult(tid2)]
         group = GroupResult(id=gid, results=subtasks)
-        # Celery < 5.1
         self.b.apply_chord(group, self.add.s())
-        # Celery 5.1
         self.b.apply_chord((uuid(), subtasks), self.add.s())
 
     def test_on_chord_part_return(self):
-        """Test if the ChordCounter is properly decremented and the callback is
-        triggered after all chord parts have returned"""
         gid = uuid()
         tid1 = uuid()
         tid2 = uuid()
@@ -806,19 +793,12 @@ class test_DatabaseBackend:
         request.chord.delay.assert_called_once()
 
     def test_on_chord_part_return_counter_not_found(self):
-        """Test if the chord does not raise an error if the ChordCounter is
-        not found
-
-        Basically this covers the case where a chord was created with a version
-        <2.0.0 and the update was done before the chord was finished
-        """
         request = mock.MagicMock()
         request.id = uuid()
         request.group = uuid()
         self.b.on_chord_part_return(request=request, state=None, result=None)
 
     def test_callback_failure(self):
-        """Test if a failure in the chord callback is properly handled"""
         gid = uuid()
         tid1 = uuid()
         tid2 = uuid()
@@ -844,7 +824,6 @@ class test_DatabaseBackend:
         request.chord.id = cid
         result = {"foo": "baz"}
 
-        # Trigger an exception when the callback is triggered
         request.chord.delay.side_effect = ValueError()
 
         self.b.mark_as_done(tid1, result, request=request)
@@ -862,9 +841,6 @@ class test_DatabaseBackend:
         assert TaskResult.objects.get(task_id=cid).status == states.FAILURE
 
     def test_on_chord_part_return_failure(self):
-        """Test if a failure in one of the chord header tasks is properly
-        handled and the callback was not triggered
-        """
         gid = uuid()
         tid1 = uuid()
         tid2 = uuid()
@@ -903,7 +879,6 @@ class test_DatabaseBackend:
         request.chord.delay.assert_not_called()
 
     def test_groupresult_save_restore(self):
-        """Test if we can save and restore a GroupResult"""
         group_id = uuid()
         results = [AsyncResult(id=uuid())]
         group = GroupResult(id=group_id, results=results)
@@ -915,7 +890,6 @@ class test_DatabaseBackend:
         assert restored_group == group
 
     def test_groupresult_save_restore_nested(self):
-        """Test if we can save and restore a nested GroupResult"""
         group_id = uuid()
         async_result = AsyncResult(id=uuid())
         nested_results = [AsyncResult(id=uuid()), AsyncResult(id=uuid())]
@@ -944,13 +918,11 @@ class test_DatabaseBackend:
 
         mindb = self.b.get_task_meta(tid2)
 
-        # check meta data
         assert mindb.get('result') == 'foo'
         assert mindb.get('task_name') is None
         assert mindb.get('task_args') is None
         assert mindb.get('task_kwargs') is None
 
-        # check task_result object
         tr = TaskResult.objects.get(task_id=tid2)
         assert tr.task_args is None
         assert tr.task_kwargs is None
@@ -967,6 +939,365 @@ class test_DatabaseBackend:
         self.b.mark_as_done(tid, 42)
         assert self.b.get_status(tid) == states.SUCCESS
         assert self.b.get_result(tid) == 42
+
+
+@pytest.mark.django_db()
+@pytest.mark.usefixtures('depends_on_current_app')
+class test_DatabaseBackendStoreResult:
+
+    @pytest.fixture(autouse=True)
+    def setup_backend(self):
+        self.app.conf.result_serializer = 'json'
+        self.app.conf.accept_content = {'json'}
+        self.app.conf.result_backend = (
+            'django_celery_results.backends:DatabaseBackend')
+        self.app.conf.result_extended = True
+        self.b = DatabaseBackend(app=self.app)
+
+    def _create_request(self, task_id, name, args, kwargs,
+                        argsrepr=None, kwargsrepr=None, task_protocol=2):
+        msg = self.app.amqp.task_protocols[task_protocol](
+            task_id=task_id,
+            name=name,
+            args=args,
+            kwargs=kwargs,
+            argsrepr=argsrepr,
+            kwargsrepr=kwargsrepr,
+        )
+        if task_protocol == 1:
+            body, headers, _, _ = hybrid_to_proto2(msg, msg.body)
+            properties = None
+            sent_event = {}
+        else:
+            headers, properties, body, sent_event = msg
+        context = Context(
+            headers=headers,
+            properties=properties,
+            body=body,
+            sent_event=sent_event,
+        )
+        request = Request(context, decoded=True, task=name)
+        return request
+
+    def test_store_result__success_status__no_date_started(self):
+        tid = uuid()
+        result = {'key': 'value'}
+
+        self.b._store_result(tid, result, states.SUCCESS)
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == states.SUCCESS
+        assert tr.date_started is None
+        assert json.loads(tr.result) == result
+
+    def test_store_result__failure_status__traceback_persisted(self):
+        tid = uuid()
+        tb = 'Traceback (most recent call last):\n  File "<stdin>"'
+        request = self._create_request(
+            task_id=tid,
+            name='fail_task',
+            args=[],
+            kwargs={},
+        )
+
+        self.b._store_result(tid, 'error', states.FAILURE, traceback=tb,
+                              request=request)
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == states.FAILURE
+        assert tr.traceback == tb
+        assert tr.date_started is None
+
+    def test_store_result__pending_status__no_date_started(self):
+        tid = uuid()
+
+        self.b._store_result(tid, None, states.PENDING)
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == states.PENDING
+        assert tr.date_started is None
+
+    def test_store_result__started_status__date_started_set(self):
+        tid = uuid()
+
+        self.b._store_result(tid, None, states.STARTED)
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == states.STARTED
+        assert isinstance(tr.date_started, datetime.datetime)
+
+    def test_store_result__started_then_success__date_started_preserved(self):
+        tid = uuid()
+
+        self.b._store_result(tid, None, states.STARTED)
+        tr = TaskResult.objects.get(task_id=tid)
+        date_started = tr.date_started
+        assert isinstance(date_started, datetime.datetime)
+
+        self.b._store_result(tid, 42, states.SUCCESS)
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == states.SUCCESS
+        assert tr.date_started == date_started
+
+    def test_store_result__no_request__extended_props_all_none(self):
+        tid = uuid()
+
+        self.b._store_result(tid, 'ok', states.SUCCESS)
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.periodic_task_name is None
+        assert tr.task_args is None
+        assert tr.task_kwargs is None
+        assert tr.task_name is None
+        assert tr.worker is None
+
+    def test_store_result__with_request__extended_props_populated(self):
+        tid = uuid()
+        request = self._create_request(
+            task_id=tid,
+            name='my_task',
+            args=['a', 1],
+            kwargs={'c': 2},
+        )
+
+        self.b._store_result(tid, 'done', states.SUCCESS, request=request)
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.task_name == 'my_task'
+        assert tr.worker is not None
+        assert len(tr.worker) > 0
+        assert json.loads(tr.task_args) == "['a', 1]"
+        assert json.loads(tr.task_kwargs) == "{'c': 2}"
+
+    def test_store_result__with_request__periodic_task_name(self):
+        tid = uuid()
+        request = self._create_request(
+            task_id=tid,
+            name='my_periodic_task',
+            args=[],
+            kwargs={},
+        )
+        request.periodic_task_name = 'my_periodic_task_name'
+
+        self.b._store_result(tid, 'done', states.SUCCESS, request=request)
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.periodic_task_name == 'my_periodic_task_name'
+
+    def test_store_result__with_request__worker_hostname(self):
+        tid = uuid()
+        request = self._create_request(
+            task_id=tid,
+            name='my_task',
+            args=[],
+            kwargs={},
+        )
+
+        self.b._store_result(tid, 'done', states.SUCCESS, request=request)
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.worker == request.hostname
+
+    def test_store_result__extended_disabled__extended_props_all_none(self):
+        self.app.conf.result_extended = False
+        self.b = DatabaseBackend(app=self.app)
+
+        tid = uuid()
+        request = self._create_request(
+            task_id=tid,
+            name='my_task',
+            args=['x'],
+            kwargs={'y': 1},
+        )
+
+        self.b._store_result(tid, 'done', states.SUCCESS, request=request)
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.periodic_task_name is None
+        assert tr.task_args is None
+        assert tr.task_kwargs is None
+        assert tr.task_name is None
+        assert tr.worker is None
+
+    def test_store_result__protocol1__args_kwargs_from_request(self):
+        tid = uuid()
+        request = mock.MagicMock()
+        request.argsrepr = None
+        request.kwargsrepr = None
+        request.args = ['a', 1, True]
+        request.kwargs = {'c': 6}
+        request.task = 'proto1_task'
+        request.periodic_task_name = None
+        request.hostname = 'celery@worker1'
+
+        self.b._store_result(tid, 'done', states.SUCCESS, request=request)
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.task_name == 'proto1_task'
+        assert json.loads(tr.task_args) == ['a', 1, True]
+        assert json.loads(tr.task_kwargs) == {'c': 6}
+
+    def test_store_result__protocol2__argsrepr_kwargsrepr(self):
+        tid = uuid()
+        request = self._create_request(
+            task_id=tid,
+            name='proto2_task',
+            args=['a', 1],
+            kwargs={'c': 2},
+            argsrepr="['custom_args']",
+            kwargsrepr="{'custom': 'kwargs'}",
+        )
+
+        self.b._store_result(tid, 'done', states.SUCCESS, request=request)
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.task_name == 'proto2_task'
+        assert json.loads(tr.task_args) == "['custom_args']"
+        assert json.loads(tr.task_kwargs) == "{'custom': 'kwargs'}"
+
+    def test_store_result__started_with_request__date_started_and_extended(self):
+        tid = uuid()
+        request = self._create_request(
+            task_id=tid,
+            name='started_task',
+            args=[1, 2],
+            kwargs={'x': 'y'},
+        )
+        request.periodic_task_name = 'periodic_started'
+
+        self.b._store_result(tid, None, states.STARTED, request=request)
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == states.STARTED
+        assert isinstance(tr.date_started, datetime.datetime)
+        assert tr.task_name == 'started_task'
+        assert tr.periodic_task_name == 'periodic_started'
+        assert tr.worker is not None
+
+    def test_store_result__meta_from_request(self):
+        tid = uuid()
+        request = self._create_request(
+            task_id=tid,
+            name='meta_task',
+            args=[],
+            kwargs={},
+        )
+        request.meta = {'custom_key': 'custom_value'}
+
+        self.b._store_result(tid, 'ok', states.SUCCESS, request=request)
+
+        tr = TaskResult.objects.get(task_id=tid)
+        stored_meta = json.loads(tr.meta)
+        assert stored_meta['custom_key'] == 'custom_value'
+        assert 'children' in stored_meta
+
+    def test_get_extended_properties__no_request(self):
+        props = self.b._get_extended_properties(None, None)
+        assert props['periodic_task_name'] is None
+        assert props['task_args'] is None
+        assert props['task_kwargs'] is None
+        assert props['task_name'] is None
+        assert props['traceback'] is None
+        assert props['worker'] is None
+
+    def test_get_extended_properties__request_with_extended_enabled(self):
+        tid = uuid()
+        request = self._create_request(
+            task_id=tid,
+            name='ext_task',
+            args=['arg1'],
+            kwargs={'k': 'v'},
+        )
+        request.periodic_task_name = 'periodic_ext'
+
+        props = self.b._get_extended_properties(request, 'tb_string')
+
+        assert props['task_name'] == 'ext_task'
+        assert props['periodic_task_name'] == 'periodic_ext'
+        assert props['traceback'] == 'tb_string'
+        assert props['worker'] == request.hostname
+        assert props['task_args'] is not None
+        assert props['task_kwargs'] is not None
+
+    def test_get_extended_properties__request_with_extended_disabled(self):
+        self.app.conf.result_extended = False
+        self.b = DatabaseBackend(app=self.app)
+
+        tid = uuid()
+        request = self._create_request(
+            task_id=tid,
+            name='no_ext_task',
+            args=['arg1'],
+            kwargs={'k': 'v'},
+        )
+
+        props = self.b._get_extended_properties(request, None)
+        assert props['periodic_task_name'] is None
+        assert props['task_args'] is None
+        assert props['task_kwargs'] is None
+        assert props['task_name'] is None
+        assert props['traceback'] is None
+        assert props['worker'] is None
+
+    def test_get_extended_properties__protocol1_fallback(self):
+        request = mock.MagicMock()
+        request.argsrepr = None
+        request.kwargsrepr = None
+        request.args = ['a', 2]
+        request.kwargs = {'x': 'y'}
+        request.task = 'proto1_ext'
+        request.periodic_task_name = None
+        request.hostname = 'celery@worker1'
+
+        props = self.b._get_extended_properties(request, None)
+
+        assert props['task_name'] == 'proto1_ext'
+        assert props['task_args'] is not None
+        assert props['task_kwargs'] is not None
+
+    def test_store_result__retry_status__no_date_started(self):
+        tid = uuid()
+
+        self.b._store_result(tid, None, states.RETRY)
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == states.RETRY
+        assert tr.date_started is None
+
+    def test_store_result__revoked_status__no_date_started(self):
+        tid = uuid()
+
+        self.b._store_result(tid, None, states.REVOKED)
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == states.REVOKED
+        assert tr.date_started is None
+
+    def test_store_result__update_existing_task(self):
+        tid = uuid()
+
+        self.b._store_result(tid, None, states.PENDING)
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == states.PENDING
+
+        self.b._store_result(tid, None, states.STARTED)
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == states.STARTED
+        assert isinstance(tr.date_started, datetime.datetime)
+
+        self.b._store_result(tid, 42, states.SUCCESS)
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.status == states.SUCCESS
+        assert json.loads(tr.result) == 42
+
+    def test_store_result__content_encoding_and_type(self):
+        tid = uuid()
+
+        self.b._store_result(tid, 'hello', states.SUCCESS)
+
+        tr = TaskResult.objects.get(task_id=tid)
+        assert tr.content_type is not None
+        assert tr.content_encoding is not None
 
 
 class DjangoCeleryResultRouter:
