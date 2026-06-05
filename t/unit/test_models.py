@@ -206,9 +206,25 @@ class test_Models(TransactionTestCase):
                 GroupResult.objects.store_group_result(
                     ctype, cenc, m2.group_id, True,
                     using='secondary')
+                # 再次调用 store_group_result，测试更新时的数据库路由
+                GroupResult.objects.store_group_result(
+                    ctype, cenc, m1.group_id, 'updated-1')
+                GroupResult.objects.store_group_result(
+                    ctype, cenc, m2.group_id, 'updated-2',
+                    using='secondary')
                 raise TransactionError()
         except TransactionError:
             pass
+
+        # 验证 m1（使用默认数据库，应该被回滚）没有被更新
+        gr1 = GroupResult.objects.get(group_id=m1.group_id)
+        assert gr1.result in (None, '')  # 不应该被更新
+        # 验证 m2（使用 secondary 数据库）被正确更新到了 secondary 数据库
+        gr2_secondary = GroupResult.objects.using('secondary').get(group_id=m2.group_id)
+        assert gr2_secondary.result == 'updated-2'
+        # 验证默认数据库中的 m2 没有被更新
+        gr2_default = GroupResult.objects.get(group_id=m2.group_id)
+        assert gr2_default.result in (None, '')
 
     def test_result_batch_deletion(self):
         # Create 200 expired records
@@ -254,3 +270,21 @@ class test_ModelsWithoutDefaultDB(TransactionTestCase):
         GroupResult.objects.db_manager(
             self.non_default_test_db
         ).delete_expired(expires=10)
+
+    def test_store_group_result_on_non_default_db(self, ctype='application/json', cenc='utf-8'):
+        """Test store_group_result works on non-default db and doesn't leak to default."""
+        # 创建并保存两次（第一次创建，第二次更新）
+        group_id = uuid()
+        GroupResult.objects.db_manager(self.non_default_test_db).store_group_result(
+            ctype, cenc, group_id, 'result-v1',
+            using=self.non_default_test_db
+        )
+        GroupResult.objects.db_manager(self.non_default_test_db).store_group_result(
+            ctype, cenc, group_id, 'result-v2',
+            using=self.non_default_test_db
+        )
+        # 验证在 secondary 数据库上能正确读取结果
+        gr = GroupResult.objects.db_manager(self.non_default_test_db).get(
+            group_id=group_id
+        )
+        assert gr.result == 'result-v2'
